@@ -1,0 +1,4 @@
+PyVTK
+MeshPy
+NumPy
+trimesh
