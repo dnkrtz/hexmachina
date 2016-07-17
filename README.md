@@ -1,2 +1,2 @@
-# AllHex
-Implementation of SRF approach to all hex meshing.
+# HexMachina
+Python implementation of SRF approach to hexahedral meshing.

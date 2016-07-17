@@ -21,7 +21,7 @@ mesh_info.set_facets(faces)
 tet_mesh = meshpy.tet.build(mesh_info, opt, max_volume=10)
 
 # Output tetrahedral mesh
-tet_mesh.write_vtk("./data/test.vtk")
+tet_mesh.write_vtk("./tests/data/test.vtk")
 
 
 ###########################################

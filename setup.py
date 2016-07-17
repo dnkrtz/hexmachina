@@ -9,13 +9,13 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(
-    name='AllHex',
+    name='HexMachina',
     version='0.0.1',
-    description='Hexahedral meshing approach based on SRF-method.',
+    description='Hexahedral meshing based on SRF-method.',
     long_description=readme,
     author='Aidan Kurtz',
-    author_email='aidan@mail.mcgill.ca',
-    url='https://github.com/dnkrtz/AllHex',
+    author_email='aidan.kurtz@mail.mcgill.ca',
+    url='https://github.com/dnkrtz/HexMachina',
     license=license,
-    packages=find_packages(exclude=('tests'))
+    packages=find_packages(exclude=('tests', 'notebooks'))
 )
