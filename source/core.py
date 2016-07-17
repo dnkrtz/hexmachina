@@ -42,3 +42,37 @@ for i, tet in enumerate(tet_mesh.elements):
 
 normals = [compute_normal(face) for face in surface_faces]
 avg = [compute_avg(face) for face in surface_faces]
+
+
+# The cubical chiral symmetry group of permutations.
+rotational_symmetries = [
+    # Identity
+    np.matrix([[ 1,  0,  0], [ 0,  1,  0], [ 0,  0,  1]]),
+    # 90 degree 4-fold rotations
+    np.matrix([[ 0, -1,  0], [ 1,  0,  0], [ 0,  0,  1]]),
+    np.matrix([[ 1,  0,  0], [ 0,  0, -1], [ 0,  1,  0]]),
+    np.matrix([[ 0,  0,  1], [ 0,  1,  0], [-1,  0,  0]]),
+    np.matrix([[ 0,  1,  0], [-1,  0,  0], [ 0,  0,  1]]),
+    np.matrix([[ 1,  0,  0], [ 0,  0,  1], [ 0, -1,  0]]),
+    np.matrix([[ 0,  0, -1], [ 0,  1,  0], [ 1,  0,  0]]),
+    # 180 degree 4-fold rotations
+    np.matrix([[-1,  0,  0], [ 0, -1,  0], [ 0,  0,  1]]),
+    np.matrix([[ 1,  0,  0], [ 0, -1,  0], [ 0,  0, -1]]),
+    np.matrix([[-1,  0,  0], [ 0,  1,  0], [ 0,  0, -1]]),
+    # 120 degree 3-fold rotations
+    np.matrix([[ 0,  1,  0], [ 0,  0, -1], [-1,  0,  0]]),
+    np.matrix([[ 0,  0, -1], [ 1,  0,  0], [ 0, -1,  0]]),
+    np.matrix([[ 0,  0,  1], [-1,  0,  0], [ 0, -1,  0]]),
+    np.matrix([[ 0, -1,  0], [ 0,  0, -1], [ 1,  0,  0]]),
+    np.matrix([[ 0,  0,  1], [ 1,  0,  0], [ 0,  1,  0]]),
+    np.matrix([[ 0,  1,  0], [ 0,  0,  1], [ 1,  0,  0]]),
+    np.matrix([[ 0, -1,  0], [ 0,  0,  1], [-1,  0,  0]]),
+    np.matrix([[ 0,  0, -1], [-1,  0,  0], [ 0,  1,  0]]),
+    # 180 degree 2-fold rotations
+    np.matrix([[ 0,  1,  0], [ 1,  0,  0], [ 0,  0, -1]]),
+    np.matrix([[ 0, -1,  0], [-1,  0,  0], [ 0,  0, -1]]),
+    np.matrix([[-1,  0,  0], [ 0,  0, -1], [ 0, -1,  0]]),
+    np.matrix([[-1,  0,  0], [ 0,  0,  1], [ 0,  1,  0]]),
+    np.matrix([[ 0,  0,  1], [ 0, -1,  0], [ 1,  0,  0]]),
+    np.matrix([[ 0,  0, -1], [ 0, -1,  0], [=1,  0,  0]]),
+]
