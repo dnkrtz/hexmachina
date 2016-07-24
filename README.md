@@ -1,6 +1,6 @@
  HexMachina
 ==============
-A short and sweet python implementation of the Singularity-Restricted Field approach to hexahedral meshing. If the method fails and some tetrahedrons appear, they can be treated as degenerate hexahedrons.
+A short and sweet python implementation of the Singularity-Restricted Field approach to hexahedral meshing.
 
 State of the Art
 -----------
