@@ -2,7 +2,7 @@
 ==============
 A short and sweet python implementation of the Singularity-Restricted Field approach to hexahedral meshing. If the method fails and some tetrahedrons appear, they can be treated as degenerate hexahedrons.
 
-Research
+State of the Art
 -----------
 A brief, non-exhaustive list of papers that inspired this implementation.
  1. [All-Hex Meshing using Singularity-Restricted Field](http://i.cs.hku.hk/~wenping/allhex.pdf)
