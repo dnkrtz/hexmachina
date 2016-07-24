@@ -1,12 +1,20 @@
-"""
- Surface Curvature Computation
- -----------------------------
- This is a Python implementation of Szymon Rusinkiewicz' paper
- "Estimating Curvatures and Their Derivatives on Triangle Meshes".
- It is heavily based on his C++ implementation (trimesh2).
-"""
+'''
+    File: curvature.py
+    License: MIT
+    Author: Aidan Kurtz
+    Created: 09/07/2016
+    Python Version: 3.5
+    ========================
+    This code estimates principal curvatures over a triangle mesh.
+
+    It is a Python implementation of Szymon Rusinkiewicz' paper
+    "Estimating Curvatures and Their Derivatives on Triangle Meshes".
+    http://gfx.cs.princeton.edu/pubs/_2004_ECA/curvpaper.pdf 
+    It is heavily based on his C++ code in trimesh2.
+'''
 
 import numpy as np
+from utils import normalize
 
 # Rotate a coordinate system to be perpendicular to the given normal.
 def rotate_coord_sys(old_u, old_v, new_norm):
@@ -47,9 +55,15 @@ def diagonalize_curvature(old_u, old_v, ku, kuv, kv, new_norm):
     # Rotate old coord system to be normal to new.
     r_old_u, r_old_v = rotate_coord_sys(old_u, old_v, new_norm)
     # Jacobi rotation to diagonalize.
+    c = 1
+    s = 0
+    tt = 0
     if kuv != 0:
         h = 0.5 * (kv - ku) / kuv
-        tt = 1 / (h - np.sqrt(1 + h*h)) if h < 0 else 1 / (h + np.sqrt(1 + h*h))
+        if h < 0:
+            tt = 1 / (h - np.sqrt(1 + h*h))
+        else:
+            tt = 1 / (h + np.sqrt(1 + h*h))
         c = 1 / np.sqrt(1 + tt*tt)
         s = tt * c
     # Compute principal curvatures.
@@ -70,8 +84,8 @@ def diagonalize_curvature(old_u, old_v, ku, kuv, kv, new_norm):
 # a vertex, or to the triangle).
 def compute_pointareas(vertices, faces):
 
-    cornerareas = []
-    pointareas = []
+    cornerareas = np.zeros( (len(faces), 3) )
+    pointareas = np.zeros(len(vertices),)
 
     for i, face in enumerate(faces):
         # Face edges
@@ -88,39 +102,43 @@ def compute_pointareas(vertices, faces):
                l2[2] * (l2[0] + l2[1] - l2[2]) ]
         # Case by case based on edge weight
         if ew[0] <= 0:
-            cornerareas[i][1] = -0.25 * l2[2] * area / np.dot(e[0], e[2])
-            cornerareas[i][2] = -0.25 * l2[1] * area / np.dot(e[0], e[1])
-            cornerareas[i][0] = area - cornerareas[i][1] - cornerareas[i][2]
+            cornerareas[i,1] = -0.25 * l2[2] * area / np.dot(e[0], e[2])
+            cornerareas[i,2] = -0.25 * l2[1] * area / np.dot(e[0], e[1])
+            cornerareas[i,0] = area - cornerareas[i,1] - cornerareas[i,2]
         elif ew[1] <= 0:
-            cornerareas[i][2] = -0.25 * l2[0] * area / np.dot(e[1], e[0])
-            cornerareas[i][0] = -0.25 * l2[2] * area / np.dot(e[1], e[2])
-            cornerareas[i][1] = area - cornerareas[i][2] - cornerareas[i][0]
+            cornerareas[i,2] = -0.25 * l2[0] * area / np.dot(e[1], e[0])
+            cornerareas[i,0] = -0.25 * l2[2] * area / np.dot(e[1], e[2])
+            cornerareas[i,1] = area - cornerareas[i,2] - cornerareas[i,0]
         elif ew[2] <= 0:
-            cornerareas[i][0] = -0.25 * l2[1] * area / np.dot(e[2], e[1])
-            cornerareas[i][1] = -0.25 * l2[0] * area / np.dot(e[2], e[0])
-            cornerareas[i][2] = area - cornerareas[i][0] - cornerareas[i][1]
+            cornerareas[i,0] = -0.25 * l2[1] * area / np.dot(e[2], e[1])
+            cornerareas[i,1] = -0.25 * l2[0] * area / np.dot(e[2], e[0])
+            cornerareas[i,2] = area - cornerareas[i,0] - cornerareas[i,1]
         else:
             ewscale = 0.5 * area / (ew[0] + ew[1] + ew[2])
             for j in range(3):
-                cornerareas[i][j] = ewscale * (ew[(j+1)%3] + ew[(j+2)%3])
+                cornerareas[i,j] = ewscale * (ew[(j+1)%3] + ew[(j+2)%3])
     
-        pointareas[face[0]] += cornerareas[i][0]
-        pointareas[face[1]] += cornerareas[i][1]
-        pointareas[face[2]] += cornerareas[i][2]
+        pointareas[face[0]] += cornerareas[i,0]
+        pointareas[face[1]] += cornerareas[i,1]
+        pointareas[face[2]] += cornerareas[i,2]
 
     return pointareas, cornerareas
 
 # Given the faces, vertices and vertex normals.
 # Compute principal curvatures and directions.
 def compute_curvatures(vertices, faces, normals):
-
+    
     # Initialize lists
     # @TODO(aidan) Make these objects variables
-    curv1, curv2, pdir1, pdir2 = [], [], [], []
+    curv1 = np.zeros(len(vertices),)
+    curv2 = np.zeros(len(vertices),)
+    curv12 = np.zeros(len(vertices),)
+    pdir1 = [ [] for _ in range(len(vertices)) ]
+    pdir2 = [ [] for _ in range(len(vertices)) ]
 
     # Compute pointareas
     pointareas, cornerareas = compute_pointareas(vertices, faces)
-
+    
     # Set up an initial coordinate system per-vertex
     for i, face in enumerate(faces):
         pdir1[face[0]] = vertices[face[1]] - vertices[face[0]]
@@ -128,9 +146,9 @@ def compute_curvatures(vertices, faces, normals):
         pdir1[face[2]] = vertices[face[0]] - vertices[face[2]]
 
     for i, vertex in enumerate(vertices):
-        pdir1[i] = normalize(np.cross(pdir[i], normals[i]))
-        pdir2[i] = np.cross(normals[i], pdir1[i])
-
+        pdir1[i] = normalize(np.cross(pdir1[i], normals[i]))
+        pdir2[i] = np.cross(normals[i], pdir1[i]) 
+        
     # Compute curvature per-face
     for i, face in enumerate(faces):
         # Face edges
@@ -144,7 +162,7 @@ def compute_curvatures(vertices, faces, normals):
 
         # Estimate curvature based on variation of
         # normals along edges.
-        m = np.zeros(3)
+        m = np.zeros(3,)
         w = np.zeros( (3,3) )
         for j in range(3):
             u =  np.dot(e[j], t)
@@ -160,9 +178,11 @@ def compute_curvatures(vertices, faces, normals):
             m[2] += dnv*v
         w[1,1] = w[0,0] + w[2,2]
         w[1,2] = w[0,1]
-
+        w[2,1] = w[1,2]
+        w[1,0] = w[0,1]
+        
         # Least squares solution.
-        x = np.linalg.lstsq(w,m)
+        x, residuals, rank, s = np.linalg.lstsq(w,m)
 
         # Push it back out to the vertices.
         for j in range(3):
@@ -173,12 +193,17 @@ def compute_curvatures(vertices, faces, normals):
             curv1[vj] = weight * c1
             curv12[vj] = weight * c12
             curv2[vj] = weight * c2
-    
+        
     # Compute principal directions and curvatures at each vertex.
-    k1, k2, dir1, dir2 = [], [], [], []
+    k1 = np.zeros(len(vertices),)
+    k2 = np.zeros(len(vertices),)
+    dir1 = [ [] for _ in range(len(vertices)) ]
+    dir2 = [ [] for _ in range(len(vertices)) ]
+    
     for i, vertex in enumerate(vertices):
-        dir1[i], dir2[i], k1[i], k2[i] = 
-            diagonalize_curvature(pdir1[i], pdir2[i], curv1[i],
+        dir1[i], dir2[i], k1[i], k2[i] = \
+            diagonalize_curvature(pdir1[i], pdir2[i], curv1[i], 
                                   curv12[i], curv2[i], normals[i])
     
     # Sliced bread.
+    return k1, k2, dir1, dir2
