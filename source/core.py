@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-
 '''
-    File: visual.py
+    File: core.py
     License: MIT
-    Author: Aidan Kurtz
+    Author: Aidan Kurtz, Sebastien Dery
     Created: 09/07/2016
     Python Version: 3.5
     ========================
@@ -72,6 +71,7 @@ for ti, tet in enumerate(tet_mesh.elements):
 # Compute surface and vertex normals.
 f_norms, v_norms = compute_normals(surf_faces, surf_vertices)
 
+# Visualize the vertex normals.
 plot_vectors(v_norms, surf_vertices)
 
 # Compute principal curvatures.
