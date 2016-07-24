@@ -54,11 +54,11 @@ def project_curvature(old_u, old_v, old_ku, old_kuv, old_kv, new_u, new_v):
 def diagonalize_curvature(old_u, old_v, ku, kuv, kv, new_norm):
     # Rotate old coord system to be normal to new.
     r_old_u, r_old_v = rotate_coord_sys(old_u, old_v, new_norm)
-    # Jacobi rotation to diagonalize.
     c = 1
     s = 0
     tt = 0
     if kuv != 0:
+        # Jacobi rotation to diagonalize.
         h = 0.5 * (kv - ku) / kuv
         if h < 0:
             tt = 1 / (h - np.sqrt(1 + h*h))
@@ -73,7 +73,7 @@ def diagonalize_curvature(old_u, old_v, ku, kuv, kv, new_norm):
     if abs(k1) >= abs(k2):
         pdir1 = c * r_old_u - s * r_old_v
     else:
-        k1, k2 = k2, k1 # Swap
+        k1, k2 = k2, k1 # swap
         pdir1 = s * r_old_u + c * r_old_v
     pdir2 = np.cross(new_norm, pdir1)
     # Return all the things.
@@ -178,8 +178,8 @@ def compute_curvatures(vertices, faces, normals):
             m[2] += dnv*v
         w[1,1] = w[0,0] + w[2,2]
         w[1,2] = w[0,1]
-        w[2,1] = w[1,2]
-        w[1,0] = w[0,1]
+        # w[2,1] = w[1,2]
+        # w[1,0] = w[0,1]
         
         # Least squares solution.
         x, residuals, rank, s = np.linalg.lstsq(w,m)

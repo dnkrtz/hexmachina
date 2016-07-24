@@ -18,7 +18,7 @@ import numpy as np
 import trimesh
 
 
-tri_mesh = trimesh.load_mesh('../tests/data/icosphere.stl')
+tri_mesh = trimesh.load_mesh('../tests/data/cylinder.stl')
 
 # Define MeshPy options
 opt = TetGen.Options(switches='pq', edgesout=True, facesout=True, neighout=True)
@@ -30,7 +30,6 @@ mesh_info.set_facets(faces)
 tet_mesh = TetGen.build(mesh_info, opt, max_volume=10)
 # Output tetrahedral mesh
 tet_mesh.write_vtk("../tests/data/test.vtk")
-
 
 # Extract surface triangle mesh from volumetric tetrahedral mesh.
 surf_faces = []
@@ -71,8 +70,8 @@ for ti, tet in enumerate(tet_mesh.elements):
 # Compute surface and vertex normals.
 f_norms, v_norms = compute_normals(surf_faces, surf_vertices)
 
-# Visualize the vertex normals.
-plot_vectors(v_norms, surf_vertices)
-
 # Compute principal curvatures.
-# k1, k2, dir1, dir2 = compute_curvatures(np.array(surf_vertices), surf_faces, v_norms)
+k1, k2, dir1, dir2 = compute_curvatures(surf_vertices, surf_faces, v_norms)
+
+# Visualize the curvatures.
+plot_vectors(dir1, surf_vertices)
