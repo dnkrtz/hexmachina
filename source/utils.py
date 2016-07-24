@@ -12,7 +12,7 @@ import numpy as np
 
 # Normalize a vector to unit length.
 def normalize(vector):
-    return vector /= np.linalg.norm(vector)
+    return vector / np.linalg.norm(vector)
 
 # The cubical chiral symmetry group of permutations.
 rotational_symmetries = [
@@ -44,5 +44,5 @@ rotational_symmetries = [
     np.matrix([[-1,  0,  0], [ 0,  0, -1], [ 0, -1,  0]]),
     np.matrix([[-1,  0,  0], [ 0,  0,  1], [ 0,  1,  0]]),
     np.matrix([[ 0,  0,  1], [ 0, -1,  0], [ 1,  0,  0]]),
-    np.matrix([[ 0,  0, -1], [ 0, -1,  0], [=1,  0,  0]]),
+    np.matrix([[ 0,  0, -1], [ 0, -1,  0], [-1,  0,  0]]), #double check this
 ]

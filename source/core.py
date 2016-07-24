@@ -12,24 +12,25 @@
 
 from normals import compute_normals
 from curvature import compute_curvatures
+from visual import plot_vectors
 
-import meshpy
+import meshpy.tet as TetGen
 import numpy as np
 import trimesh
 
 
-tri_mesh = trimesh.load_mesh('./tests/data/icosphere.stl')
+tri_mesh = trimesh.load_mesh('../tests/data/icosphere.stl')
 
 # Define MeshPy options
-opt = meshpy.tet.Options(switches='pq', edgesout=True, facesout=True, neighout=True)
+opt = TetGen.Options(switches='pq', edgesout=True, facesout=True, neighout=True)
 # Generate mesh
-mesh_info = meshpy.tet.MeshInfo()
+mesh_info = TetGen.MeshInfo()
 mesh_info.set_points(tri_mesh.vertices)
 faces = [list(map(lambda x: int(x), i)) for i in tri_mesh.faces]
 mesh_info.set_facets(faces)
-tet_mesh = meshpy.tet.build(mesh_info, opt, max_volume=10)
+tet_mesh = TetGen.build(mesh_info, opt, max_volume=10)
 # Output tetrahedral mesh
-tet_mesh.write_vtk("./tests/data/test.vtk")
+tet_mesh.write_vtk("../tests/data/test.vtk")
 
 
 # Extract surface triangle mesh from volumetric tetrahedral mesh.
@@ -61,7 +62,7 @@ for ti, tet in enumerate(tet_mesh.elements):
                 # Keep track of global to surface
                 global2surf[vi] = len(surf_vertices)
                 # Append to the surface vertex list
-                surf_vertices.append(tet_mesh.points[vi])
+                surf_vertices.append(np.array(tet_mesh.points[vi]))
         
         # Translate using the global 2 surface vertex indices map
         face = list(map(lambda f: global2surf[f], face))
@@ -71,5 +72,7 @@ for ti, tet in enumerate(tet_mesh.elements):
 # Compute surface and vertex normals.
 f_norms, v_norms = compute_normals(surf_faces, surf_vertices)
 
+plot_vectors(v_norms, surf_vertices)
+
 # Compute principal curvatures.
-k1, k2, dir1, dir2 = compute_curvatures(np.array(surf_vertices), surf_faces, v_norms)
+# k1, k2, dir1, dir2 = compute_curvatures(np.array(surf_vertices), surf_faces, v_norms)

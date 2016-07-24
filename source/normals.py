@@ -13,8 +13,8 @@ from utils import normalize
 
 def compute_normals(faces, vertices):
 
-    f_norms = [ [] for _ in range(len(faces)) ]
-    v_norms = [ [] for _ in range(len(vertices)) ]
+    f_norms = [ np.zeros(3,) for _ in range(len(faces)) ]
+    v_norms = [ np.zeros(3,) for _ in range(len(vertices)) ]
 
     # Compute face normals, easy as cake.
     for fi, face in enumerate(faces):
@@ -22,7 +22,7 @@ def compute_normals(faces, vertices):
                                vertices[face[1]] - vertices[face[0]])
     
     # Next, compute the vertex normals.
-    for fi, face in enumerate(surf_faces):
+    for fi, face in enumerate(faces):
         v_norms[face[0]] += f_norms[fi]
         v_norms[face[1]] += f_norms[fi]
         v_norms[face[2]] += f_norms[fi]
