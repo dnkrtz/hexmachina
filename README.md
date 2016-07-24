@@ -1,6 +1,6 @@
  HexMachina
 ==============
-A short and sweet python implementation of the Singularity-Restricted Field approach to hexahedral meshing.
+A short and sweet python implementation of the SRF approach to hexahedral meshing.
 
 State of the Art
 -----------
