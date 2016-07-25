@@ -180,7 +180,6 @@ def compute_curvatures(vertices, faces, normals):
         w[1,2] = w[0,1]
         
         # Least squares solution.
-        w = np.linalg.cholesky(w)
         x, residuals, rank, s = np.linalg.lstsq(w,m)
 
         # Push it back out to the vertices.
@@ -189,20 +188,15 @@ def compute_curvatures(vertices, faces, normals):
             c1, c12, c2 = project_curvature(t, b, x[0], x[1], x[2],
                                             pdir1[vj], pdir2[vj])
             weight = cornerareas[i,j] / pointareas[vj]
-            curv1[vj] = weight * c1
-            curv12[vj] = weight * c12
-            curv2[vj] = weight * c2
+            curv1[vj] += weight * c1
+            curv12[vj] += weight * c12
+            curv2[vj] += weight * c2
         
     # Compute principal directions and curvatures at each vertex.
-    k1 = np.zeros(len(vertices),)
-    k2 = np.zeros(len(vertices),)
-    dir1 = [ [] for _ in range(len(vertices)) ]
-    dir2 = [ [] for _ in range(len(vertices)) ]
-    
     for i, vertex in enumerate(vertices):
-        dir1[i], dir2[i], k1[i], k2[i] = \
+        pdir1[i], pdir2[i], curv1[i], curv2[i] = \
             diagonalize_curvature(pdir1[i], pdir2[i], curv1[i], 
                                   curv12[i], curv2[i], normals[i])
     
     # Sliced bread.
-    return k1, k2, dir1, dir2
+    return curv1, curv2, pdir1, pdir2

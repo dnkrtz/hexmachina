@@ -74,7 +74,7 @@ f_norms, v_norms = compute_normals(surf_faces, surf_vertices)
 k1, k2, dir1, dir2 = compute_curvatures(surf_vertices, surf_faces, v_norms)
 
 # Visualize the curvatures.
-# plot_vectors(dir1, surf_vertices)
+plot_vectors(dir2, surf_vertices)
 
 # Visualize the mesh.
-plot_mesh(surf_vertices, surf_faces)
+# plot_mesh(surf_vertices, surf_faces)
