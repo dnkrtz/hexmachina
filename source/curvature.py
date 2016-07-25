@@ -5,7 +5,7 @@
     Created: 09/07/2016
     Python Version: 3.5
     ========================
-    This code estimates principal curvatures over a triangle mesh.
+    This module estimates principal curvatures over a triangle mesh.
 
     It is a Python implementation of Szymon Rusinkiewicz' paper
     "Estimating Curvatures and Their Derivatives on Triangle Meshes".
@@ -124,19 +124,6 @@ def compute_pointareas(vertices, faces):
 
     return pointareas, cornerareas
 
-# # Perform LDL^T decomposition of a symmetric positive definite matrix.
-# # Like Cholesky, but no square roots. Overwrites lower triangle of matrix.
-# def ldltdc(A, rdiag, n):
-#     for i in range(n):
-#         for k in range(i):
-#             v[k] = A[i,k] * rdiag[k]
-#         for j in range(i, n):
-#             sum = A[i,j]
-#             for k in range(i):
-#                 sum -= v[k] * A[j,k]
-#             if (i == j):
-#                 rdiag[i] = 
-
 # Given the faces, vertices and vertex normals.
 # Compute principal curvatures and directions.
 def compute_curvatures(vertices, faces, normals):
@@ -193,7 +180,7 @@ def compute_curvatures(vertices, faces, normals):
         w[1,2] = w[0,1]
         
         # Least squares solution.
-        w += np.linalg.cholesky(w)
+        w = np.linalg.cholesky(w)
         x, residuals, rank, s = np.linalg.lstsq(w,m)
 
         # Push it back out to the vertices.

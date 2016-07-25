@@ -11,7 +11,7 @@
 
 from normals import compute_normals
 from curvature import compute_curvatures
-from visual import plot_vectors
+from visual import plot_vectors, plot_mesh
 
 import meshpy.tet as TetGen
 import numpy as np
@@ -74,4 +74,7 @@ f_norms, v_norms = compute_normals(surf_faces, surf_vertices)
 k1, k2, dir1, dir2 = compute_curvatures(surf_vertices, surf_faces, v_norms)
 
 # Visualize the curvatures.
-plot_vectors(dir1, surf_vertices)
+# plot_vectors(dir1, surf_vertices)
+
+# Visualize the mesh.
+plot_mesh(surf_vertices, surf_faces)

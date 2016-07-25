@@ -5,7 +5,7 @@
     Created: 09/07/2016
     Python Version: 3.5
     ========================
-    This code contains some useful functions and hardcodes.
+    This module contains some useful functions and hardcodes.
 '''
 
 import numpy as np

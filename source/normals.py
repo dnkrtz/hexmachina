@@ -5,7 +5,7 @@
     Created: 09/07/2016
     Python Version: 3.5
     ========================
-    This code computes face and vertex normals.
+    This module computes face and vertex normals.
 '''
 
 import numpy as np
