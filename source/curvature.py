@@ -124,6 +124,19 @@ def compute_pointareas(vertices, faces):
 
     return pointareas, cornerareas
 
+# # Perform LDL^T decomposition of a symmetric positive definite matrix.
+# # Like Cholesky, but no square roots. Overwrites lower triangle of matrix.
+# def ldltdc(A, rdiag, n):
+#     for i in range(n):
+#         for k in range(i):
+#             v[k] = A[i,k] * rdiag[k]
+#         for j in range(i, n):
+#             sum = A[i,j]
+#             for k in range(i):
+#                 sum -= v[k] * A[j,k]
+#             if (i == j):
+#                 rdiag[i] = 
+
 # Given the faces, vertices and vertex normals.
 # Compute principal curvatures and directions.
 def compute_curvatures(vertices, faces, normals):
@@ -170,7 +183,7 @@ def compute_curvatures(vertices, faces, normals):
             w[0,0] += u*u
             w[0,1] += u*v
             w[2,2] += v*v
-            dn = normals[face[(j-1)%3]] - normals[face[(j+1)%3]]
+            dn = normals[face[(j+2)%3]] - normals[face[(j+1)%3]]
             dnu = np.dot(dn, t)
             dnv = np.dot(dn, b)
             m[0] += dnu*u
@@ -178,10 +191,9 @@ def compute_curvatures(vertices, faces, normals):
             m[2] += dnv*v
         w[1,1] = w[0,0] + w[2,2]
         w[1,2] = w[0,1]
-        # w[2,1] = w[1,2]
-        # w[1,0] = w[0,1]
         
         # Least squares solution.
+        w += np.linalg.cholesky(w)
         x, residuals, rank, s = np.linalg.lstsq(w,m)
 
         # Push it back out to the vertices.
