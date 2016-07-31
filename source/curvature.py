@@ -69,6 +69,7 @@ def diagonalize_curvature(old_u, old_v, ku, kuv, kv, new_norm):
     # Compute principal curvatures.
     k1 = ku - tt * kuv
     k2 = kv + tt * kuv
+
     # Compute principal directions.
     if abs(k1) >= abs(k2):
         pdir1 = c * r_old_u - s * r_old_v
@@ -85,14 +86,14 @@ def diagonalize_curvature(old_u, old_v, ku, kuv, kv, new_norm):
 def compute_pointareas(vertices, faces):
 
     cornerareas = np.zeros( (len(faces), 3) )
-    pointareas = np.zeros(len(vertices),)
+    pointareas = np.zeros( (len(vertices), 1) )
 
     for i, face in enumerate(faces):
         # Face edges
         e = np.array([ vertices[face[2]] - vertices[face[1]],
                        vertices[face[0]] - vertices[face[2]],
                        vertices[face[1]] - vertices[face[0]] ])
-        # Compute corner weights
+        # Compute edge and corner weights
         area = 0.5 * np.linalg.norm(np.cross(e[0], e[1]))
         l2 = [ np.linalg.norm(e[0]) ** 2, 
                np.linalg.norm(e[1]) ** 2,
@@ -124,30 +125,57 @@ def compute_pointareas(vertices, faces):
 
     return pointareas, cornerareas
 
+# def ldltdc(A, rdiag):
+#     v = np.zeros(3,)
+#     for i in range(3):
+#         for k in range(i, 3-i):
+#             v[k] = A[i,k] * rdiag[k]
+#         for j in range(3):
+#             sum = A[i,j]
+#             for k in range(i):
+#                 sum -= v[k] * A[j,k]
+#             if i == j:
+#                 rdiag[i] = 1 / sum
+#             else:
+#                 A[j,i] = sum
+
+# def ldltsl(A, rdiag, B, x):
+#     for i in range(3):
+#         sum = B[i]
+#         for k in range(i):
+#             sum -= A[i,k] * x[k]
+#         x[i] = sum * rdiag[i]
+#     for i in [2,1,0]:
+#         sum = 0
+#         for k in range(i+1,3-i-1):
+#             sum += A[k,i] * x[k]
+#         x[i] -= sum * rdiag[i]
+
+
 # Given the faces, vertices and vertex normals.
 # Compute principal curvatures and directions.
 def compute_curvatures(vertices, faces, normals):
     
     # Initialize lists
-    # @TODO(aidan) Make these objects variables
-    curv1 = np.zeros(len(vertices),)
-    curv2 = np.zeros(len(vertices),)
-    curv12 = np.zeros(len(vertices),)
-    pdir1 = [ [] for _ in range(len(vertices)) ]
-    pdir2 = [ [] for _ in range(len(vertices)) ]
+    # @TODO(aidan) Make these object variables
+    curv1 = np.zeros( (len(vertices),1) )
+    curv2 = np.zeros( (len(vertices),1) )
+    curv12 = np.zeros( (len(vertices),1) )
+    pdir1 = np.zeros( (len(vertices),3) )
+    pdir2 = np.zeros( (len(vertices),3) )
 
     # Compute pointareas
     pointareas, cornerareas = compute_pointareas(vertices, faces)
     
     # Set up an initial coordinate system per-vertex
     for i, face in enumerate(faces):
-        pdir1[face[0]] = vertices[face[1]] - vertices[face[0]]
-        pdir1[face[1]] = vertices[face[2]] - vertices[face[1]]
-        pdir1[face[2]] = vertices[face[0]] - vertices[face[2]]
+        pdir1[face[0],:] = vertices[face[1]] - vertices[face[0]]
+        pdir1[face[1],:] = vertices[face[2]] - vertices[face[1]]
+        pdir1[face[2],:] = vertices[face[0]] - vertices[face[2]]
 
     for i, vertex in enumerate(vertices):
-        pdir1[i] = normalize(np.cross(pdir1[i], normals[i]))
-        pdir2[i] = np.cross(normals[i], pdir1[i]) 
+        pdir1[i] = normalize(np.cross(pdir1[i,:], normals[i]))
+        pdir2[i] = np.cross(normals[i], pdir1[i,:])
         
     # Compute curvature per-face
     for i, face in enumerate(faces):
@@ -194,8 +222,8 @@ def compute_curvatures(vertices, faces, normals):
         
     # Compute principal directions and curvatures at each vertex.
     for i, vertex in enumerate(vertices):
-        pdir1[i], pdir2[i], curv1[i], curv2[i] = \
-            diagonalize_curvature(pdir1[i], pdir2[i], curv1[i], 
+        pdir1[i,:], pdir2[i,:], curv1[i], curv2[i] = \
+            diagonalize_curvature(pdir1[i,:], pdir2[i,:], curv1[i], 
                                   curv12[i], curv2[i], normals[i])
     
     # Sliced bread.
