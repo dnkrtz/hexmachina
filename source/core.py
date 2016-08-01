@@ -18,7 +18,7 @@ import numpy as np
 import trimesh
 
 
-tri_mesh = trimesh.load_mesh('../tests/data/cylinder.stl')
+tri_mesh = trimesh.load_mesh('../tests/data/stanford_bunny.stl')
 
 # Define MeshPy options
 opt = TetGen.Options(switches='pq', edgesout=True, facesout=True, neighout=True)
@@ -72,10 +72,6 @@ f_norms, v_norms = compute_normals(surf_faces, surf_vertices)
 
 # Compute principal curvatures.
 k1, k2, dir1, dir2 = compute_curvatures(surf_vertices, surf_faces, v_norms)
-
-for i in range(len(k1)):
-    print("max : %s" %k1[i])
-    print("min : %s" %k2[i])
 
 # Visualize the curvatures.
 plot_vectors(dir2, surf_vertices)
