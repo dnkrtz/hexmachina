@@ -27,8 +27,10 @@ def compute_normals(faces, vertices):
         v_norms[face[1]] += f_norms[fi]
         v_norms[face[2]] += f_norms[fi]
 
-    # Normalize all normals
-    f_norm = [normalize(f_norm) for f_norm in f_norms]
-    v_norm = [normalize(v_norm) for v_norm in v_norms]
+    # Normalize all vectors
+    for i, f_norm in enumerate(f_norms):
+        f_norms[i] = normalize(f_norm)
+    for i, v_norm in enumerate(v_norms):
+        v_norms[i] = normalize(v_norm)
 
     return f_norms, v_norms

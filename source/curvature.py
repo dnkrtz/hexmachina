@@ -13,6 +13,7 @@
     It is heavily based on his C++ code in trimesh2.
 '''
 
+import math
 import numpy as np
 from utils import normalize
 
@@ -57,14 +58,14 @@ def diagonalize_curvature(old_u, old_v, ku, kuv, kv, new_norm):
     c = 1
     s = 0
     tt = 0
-    if kuv != 0:
+    if not math.isclose(kuv, 0):
         # Jacobi rotation to diagonalize.
         h = 0.5 * (kv - ku) / kuv
         if h < 0:
-            tt = 1 / (h - np.sqrt(1 + h*h))
+            tt = 1 / (h - math.sqrt(1 + h*h))
         else:
-            tt = 1 / (h + np.sqrt(1 + h*h))
-        c = 1 / np.sqrt(1 + tt*tt)
+            tt = 1 / (h + math.sqrt(1 + h*h))
+        c = 1 / math.sqrt(1 + tt*tt)
         s = tt * c
     # Compute principal curvatures.
     k1 = ku - tt * kuv
@@ -125,33 +126,6 @@ def compute_pointareas(vertices, faces):
 
     return pointareas, cornerareas
 
-# def ldltdc(A, rdiag):
-#     v = np.zeros(3,)
-#     for i in range(3):
-#         for k in range(i, 3-i):
-#             v[k] = A[i,k] * rdiag[k]
-#         for j in range(3):
-#             sum = A[i,j]
-#             for k in range(i):
-#                 sum -= v[k] * A[j,k]
-#             if i == j:
-#                 rdiag[i] = 1 / sum
-#             else:
-#                 A[j,i] = sum
-
-# def ldltsl(A, rdiag, B, x):
-#     for i in range(3):
-#         sum = B[i]
-#         for k in range(i):
-#             sum -= A[i,k] * x[k]
-#         x[i] = sum * rdiag[i]
-#     for i in [2,1,0]:
-#         sum = 0
-#         for k in range(i+1,3-i-1):
-#             sum += A[k,i] * x[k]
-#         x[i] -= sum * rdiag[i]
-
-
 # Given the faces, vertices and vertex normals.
 # Compute principal curvatures and directions.
 def compute_curvatures(vertices, faces, normals):
@@ -174,8 +148,8 @@ def compute_curvatures(vertices, faces, normals):
         pdir1[face[2],:] = vertices[face[0]] - vertices[face[2]]
 
     for i, vertex in enumerate(vertices):
-        pdir1[i] = normalize(np.cross(pdir1[i,:], normals[i]))
-        pdir2[i] = np.cross(normals[i], pdir1[i,:])
+        pdir1[i,:] = normalize(np.cross(pdir1[i,:], normals[i]))
+        pdir2[i,:] = np.cross(normals[i], pdir1[i,:])
         
     # Compute curvature per-face
     for i, face in enumerate(faces):
@@ -190,7 +164,7 @@ def compute_curvatures(vertices, faces, normals):
 
         # Estimate curvature based on variation of
         # normals along edges.
-        m = np.zeros(3,)
+        m = np.zeros( (3,1) )
         w = np.zeros( (3,3) )
         for j in range(3):
             u =  np.dot(e[j], t)
@@ -206,9 +180,11 @@ def compute_curvatures(vertices, faces, normals):
             m[2] += dnv*v
         w[1,1] = w[0,0] + w[2,2]
         w[1,2] = w[0,1]
-        
+        w[2,1] = w[1,2]
+        w[1,0] = w[0,1]
+
         # Least squares solution.
-        x, residuals, rank, s = np.linalg.lstsq(w,m)
+        x = np.linalg.lstsq(w,m)[0]
 
         # Push it back out to the vertices.
         for j in range(3):
