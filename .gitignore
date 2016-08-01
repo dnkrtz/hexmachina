@@ -1,2 +1,2 @@
 *__pycache__/
-tests/data/test.vtk
+./tests/data/test.vtk
