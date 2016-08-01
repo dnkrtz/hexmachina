@@ -180,8 +180,9 @@ def compute_curvatures(vertices, faces, normals):
             m[2] += dnv*v
         w[1,1] = w[0,0] + w[2,2]
         w[1,2] = w[0,1]
-        w[2,1] = w[1,2]
-        w[1,0] = w[0,1]
+        # @TODO(aidan) Do we need this?
+        # w[2,1] = w[1,2]
+        # w[1,0] = w[0,1]
 
         # Least squares solution.
         x = np.linalg.lstsq(w,m)[0]
