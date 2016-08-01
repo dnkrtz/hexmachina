@@ -18,7 +18,7 @@ import numpy as np
 import trimesh
 
 
-tri_mesh = trimesh.load_mesh('../tests/data/stanford_bunny.stl')
+tri_mesh = trimesh.load_mesh('../io/stanford_bunny.stl')
 
 # Define MeshPy options
 opt = TetGen.Options(switches='pq', edgesout=True, facesout=True, neighout=True)
@@ -29,7 +29,7 @@ faces = [list(map(lambda x: int(x), i)) for i in tri_mesh.faces]
 mesh_info.set_facets(faces)
 tet_mesh = TetGen.build(mesh_info, opt, max_volume=10)
 # Output tetrahedral mesh
-tet_mesh.write_vtk("../tests/data/test.vtk")
+tet_mesh.write_vtk("../io/test.vtk")
 
 # Extract surface triangle mesh from volumetric tetrahedral mesh.
 surf_faces = []
@@ -37,6 +37,7 @@ surf_vertices = []
 global2surf = dict()
 
 for ti, tet in enumerate(tet_mesh.elements):
+
     # Within the neighbors list of each tet, position 'i' contains the index of
     # the face adjacent to the tet at face opposing vertex 'i'. A value of -1 
     # indicates that the face has no neighbor (i.e. it's a boundary face).
@@ -45,24 +46,25 @@ for ti, tet in enumerate(tet_mesh.elements):
     for bound_id in outliers:
         v_indices = list(range(4))
         v_indices.remove(bound_id)
+
         # If vertex 1 or vertex 3 are not part of the face, the order of the 
         # vertices must be reversed to obtain an outward facing triangle. Refer
         # to TetGen documentation to see why that is.
         if 1 not in v_indices or 3 not in v_indices:
             v_indices.reverse()
+
         # Get the global vertex indices for the face
         face = [tet[i] for i in v_indices]
-        
         # For each vertex on the surface
         for vi in face:
             # If currently not mapped
             if vi not in global2surf:
-                # Keep track of global to surface
+                # Keep track of global to surface indices
                 global2surf[vi] = len(surf_vertices)
                 # Append to the surface vertex list
                 surf_vertices.append(np.array(tet_mesh.points[vi]))
         
-        # Translate using the global 2 surface vertex indices map
+        # Store surface vertex indices, using the global2surf map.
         face = list(map(lambda f: global2surf[f], face))
         
         surf_faces.append(face)
