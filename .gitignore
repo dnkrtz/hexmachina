@@ -1,2 +1,4 @@
 *__pycache__/
-./tests/data/test.vtk
+*.pyc
+.vscode/
+io/test.vtk

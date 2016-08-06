@@ -13,16 +13,16 @@ from normals import compute_normals
 from curvature import compute_curvatures
 from visual import plot_vectors, plot_mesh
 
+from bidict import bidict
 import meshpy.tet as TetGen
 import numpy as np
 import trimesh
 
-
-tri_mesh = trimesh.load_mesh('../io/stanford_bunny.stl')
+tri_mesh = trimesh.load_mesh('../io/cylinder.stl')
 
 # Define MeshPy options
 opt = TetGen.Options(switches='pq', edgesout=True, facesout=True, neighout=True)
-# Generate mesh
+# Generate tetrahedral mesh
 mesh_info = TetGen.MeshInfo()
 mesh_info.set_points(tri_mesh.vertices)
 faces = [list(map(lambda x: int(x), i)) for i in tri_mesh.faces]
@@ -34,49 +34,37 @@ tet_mesh.write_vtk("../io/test.vtk")
 # Extract surface triangle mesh from volumetric tetrahedral mesh.
 surf_faces = []
 surf_vertices = []
-global2surf = dict()
+# Volume-to-surface index maps (bi-directional).
+vertex_map, face_map = bidict(), bidict()
+# Loop through all faces.
+for fi, face in enumerate(tet_mesh.faces):
+    # If face marker is 0, face is internal.
+    if (tet_mesh.face_markers[fi] == 0):
+        continue
+    # Otherwise, face is at boundary.
+    for vi in face:
+        # If vertex is currently not mapped
+        if vi not in vertex_map:
+            # Keep track of volume-to-surface index
+            vertex_map[vi] = len(surf_vertices)
+            # Append to the surface vertex list
+            surf_vertices.append(np.array(tet_mesh.points[vi]))
+    
+    # Store surface vertex indices.
+    face = list(map(lambda f: vertex_map[f], face))
+    face_map[fi] = len(surf_faces)
+    surf_faces.append(face)
 
-for ti, tet in enumerate(tet_mesh.elements):
-
-    # Within the neighbors list of each tet, position 'i' contains the index of
-    # the face adjacent to the tet at face opposing vertex 'i'. A value of -1 
-    # indicates that the face has no neighbor (i.e. it's a boundary face).
-    # So, let's find all such occurences in the current tet.
-    outliers = [i for i, x in enumerate(tet_mesh.neighbors[ti]) if x == -1]
-    for bound_id in outliers:
-        v_indices = list(range(4))
-        v_indices.remove(bound_id)
-
-        # If vertex 1 or vertex 3 are not part of the face, the order of the 
-        # vertices must be reversed to obtain an outward facing triangle. Refer
-        # to TetGen documentation to see why that is.
-        if 1 not in v_indices or 3 not in v_indices:
-            v_indices.reverse()
-
-        # Get the global vertex indices for the face
-        face = [tet[i] for i in v_indices]
-        # For each vertex on the surface
-        for vi in face:
-            # If currently not mapped
-            if vi not in global2surf:
-                # Keep track of global to surface indices
-                global2surf[vi] = len(surf_vertices)
-                # Append to the surface vertex list
-                surf_vertices.append(np.array(tet_mesh.points[vi]))
-        
-        # Store surface vertex indices, using the global2surf map.
-        face = list(map(lambda f: global2surf[f], face))
-        
-        surf_faces.append(face)
-
-# Compute surface and vertex normals.
+# Compute face and vertex normals.
 f_norms, v_norms = compute_normals(surf_faces, surf_vertices)
 
-# Compute principal curvatures.
+# Compute principal curvatures and directions.
 k1, k2, dir1, dir2 = compute_curvatures(surf_vertices, surf_faces, v_norms)
 
-# Visualize the curvatures.
-plot_vectors(dir2, surf_vertices)
+# Plot principal curvature.
+plot_vectors(dir1, surf_vertices)
 
-# Visualize the mesh.
-# plot_mesh(surf_vertices, surf_faces)
+# Initialize 3D frame field as an array of (U, V, W) frames.
+# This field is parallel to the tet list (i.e. each tet has a frame).
+frames = np.zeros( (3, len(tet_mesh.elements)) )
+

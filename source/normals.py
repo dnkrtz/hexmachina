@@ -18,8 +18,8 @@ def compute_normals(faces, vertices):
 
     # Compute face normals, easy as cake.
     for fi, face in enumerate(faces):
-        f_norms[fi] = np.cross(vertices[face[1]] - vertices[face[0]],
-                               vertices[face[2]] - vertices[face[0]])
+        f_norms[fi] = np.cross(vertices[face[2]] - vertices[face[0]],
+                               vertices[face[1]] - vertices[face[0]])
     
     # Next, compute the vertex normals.
     for fi, face in enumerate(faces):
