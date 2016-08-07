@@ -24,14 +24,14 @@ def plot_vectors(vectors, points):
 
     plt.show()
 
-def plot_framefield(frames, points):
+def plot_framefield(frames):
     fig = plt.figure(num=None, figsize=(12, 10), dpi=80)
     ax = fig.add_subplot(111, projection='3d')
 
-    for i, point in enumerate(points):
-        ax.quiver(point[0], point[1], point[2], frames[i][0,0], frames[i][0,1], frames[i][0,2]) # U
-        ax.quiver(point[0], point[1], point[2], frames[i][1,0], frames[i][1,1], frames[i][1,2]) # V
-        ax.quiver(point[0], point[1], point[2], frames[i][2,0], frames[i][2,1], frames[i][2,2]) # W
+    for frame in frames:
+        ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.u[0], frame.u[1], frame.u[2]) # U
+        ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.v[0], frame.v[1], frame.v[2]) # V
+        ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.w[0], frame.w[1], frame.w[2]) # W
     
     plt.show()
 

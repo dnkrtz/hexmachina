@@ -10,6 +10,7 @@
 '''
 
 from smesh import SurfaceMesh
+from framefield import init_framefield
 from visual import plot_vectors, plot_mesh, plot_framefield
 
 import math
@@ -31,19 +32,17 @@ tet_mesh = TetGen.build(mesh_info, opt, max_volume=10)
 tet_mesh.write_vtk("../io/test.vtk")
 
 # Construct boundary surface of tetrahedral mesh.
-smesh = SurfaceMesh(tet_mesh)
+surf_mesh = SurfaceMesh(tet_mesh)
 
 # Compute face and vertex normals.
-smesh.compute_normals()
+surf_mesh.compute_normals()
 
 # Compute principal curvatures and directions.
-smesh.compute_curvatures()
-
-plot_vectors(smesh.pdir1, smesh.vertices)
+surf_mesh.compute_curvatures()
 
 # Construct 3D frame field as an array of (U, V, W) frames.
 # This field is parallel to the tet list (i.e. each tet has a frame).
-
+init_framefield(tet_mesh, surf_mesh)
         
         
 

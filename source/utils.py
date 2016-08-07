@@ -14,6 +14,12 @@ import numpy as np
 def normalize(vector):
     return vector / np.linalg.norm(vector)
 
+def tet_centroid(tet_mesh, ti):
+    return ( np.array(tet_mesh.points[tet_mesh.elements[ti][0]]) + 
+             np.array(tet_mesh.points[tet_mesh.elements[ti][1]]) +
+             np.array(tet_mesh.points[tet_mesh.elements[ti][2]]) + 
+             np.array(tet_mesh.points[tet_mesh.elements[ti][3]]) ) / 4
+
 # The cubical chiral symmetry group of permutations.
 rotational_symmetries = [
     # Identity
