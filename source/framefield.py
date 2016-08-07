@@ -16,7 +16,7 @@ import numpy as np
 from scipy import spatial
 
 class Frame(object):
-    def __init__(self, u = [], v = [], w = [], location = []):
+    def __init__(self, u, v, w, location):
         self.u, self.v, self.w = u, v, w
         self.location = location
 
@@ -38,7 +38,7 @@ def init_framefield(tet_mesh, surf_mesh):
                                       tet_centroid(tet_mesh, ti) ))
 
     # Prepare a KDTree of boundary frame coords for quick spatial queries.
-    tree = spatial.KDTree(np.vstack(map(lambda frame: frame.location, boundary_frames)))
+    tree = spatial.KDTree(np.vstack([frame.location for frame in boundary_frames]))
 
     frames = []
     # Now propagate the boundary frames throughout the tet mesh.
@@ -50,6 +50,11 @@ def init_framefield(tet_mesh, surf_mesh):
                              boundary_frames[nearest_ti].v,
                              boundary_frames[nearest_ti].w,
                              location ))
-
         
     plot_framefield(frames)
+
+def singular_graph(tet_mesh, frames):
+    pass
+
+def optimize_framefield(tet_mesh, frames):
+    pass

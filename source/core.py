@@ -11,7 +11,7 @@
 
 from smesh import SurfaceMesh
 from framefield import init_framefield
-from visual import plot_vectors, plot_mesh, plot_framefield
+from visual import plot_vectors, plot_mesh, plot_framefield, plot_lines
 
 import math
 import meshpy.tet as TetGen
@@ -21,7 +21,7 @@ import trimesh
 tri_mesh = trimesh.load_mesh('../io/cylinder.stl')
 
 # Define MeshPy options
-opt = TetGen.Options(switches='pqnn', edgesout=True, facesout=True)
+opt = TetGen.Options(switches='pqnn', facesout=True, edgesout=True)
 # Generate tetrahedral mesh
 mesh_info = TetGen.MeshInfo()
 mesh_info.set_points(tri_mesh.vertices)

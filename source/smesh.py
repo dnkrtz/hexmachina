@@ -45,7 +45,7 @@ class SurfaceMesh(object):
                     self.vertices.append(np.array(tet_mesh.points[vi]))
             
             # Store surface vertex indices.
-            face = list(map(lambda vi: self.vertex_map[vi], face))
+            face = [ self.vertex_map[vi] for vi in face ]
             self.face_map[fi] = len(self.faces)
             self.faces.append(face)
 
