@@ -2,3 +2,4 @@ PyVTK
 MeshPy
 NumPy
 trimesh
+bidict

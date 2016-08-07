@@ -24,6 +24,17 @@ def plot_vectors(vectors, points):
 
     plt.show()
 
+def plot_framefield(frames, points):
+    fig = plt.figure(num=None, figsize=(12, 10), dpi=80)
+    ax = fig.add_subplot(111, projection='3d')
+
+    for i, point in enumerate(points):
+        ax.quiver(point[0], point[1], point[2], frames[i][0,0], frames[i][0,1], frames[i][0,2]) # U
+        ax.quiver(point[0], point[1], point[2], frames[i][1,0], frames[i][1,1], frames[i][1,2]) # V
+        ax.quiver(point[0], point[1], point[2], frames[i][2,0], frames[i][2,1], frames[i][2,2]) # W
+    
+    plt.show()
+
 def plot_mesh(vertices, faces):
     fig = plt.figure(num=None, figsize=(12, 10), dpi=80)
     ax = fig.add_subplot(111, projection='3d')
