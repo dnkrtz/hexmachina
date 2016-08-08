@@ -21,7 +21,7 @@ def tet_centroid(tet_mesh, ti):
              np.array(tet_mesh.points[tet_mesh.elements[ti][3]]) ) / 4
 
 # The cubical chiral symmetry group of permutations.
-rotational_symmetries = [
+chiral_symmetries = [
     # Identity
     np.matrix([[ 1,  0,  0], [ 0,  1,  0], [ 0,  0,  1]]),
     # 90 degree 4-fold rotations

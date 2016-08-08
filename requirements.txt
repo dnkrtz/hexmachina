@@ -1,5 +1,5 @@
 PyVTK
-MeshPy
+MeshPy-2016.1
 NumPy
 trimesh
 bidict

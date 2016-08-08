@@ -10,8 +10,8 @@
 '''
 
 from smesh import SurfaceMesh
-from framefield import init_framefield
-from visual import plot_vectors, plot_mesh, plot_framefield, plot_lines
+from framefield import init_framefield, singular_graph
+from visual import *
 
 import math
 import meshpy.tet as TetGen
@@ -42,7 +42,8 @@ surf_mesh.compute_curvatures()
 
 # Construct 3D frame field as an array of (U, V, W) frames.
 # This field is parallel to the tet list (i.e. each tet has a frame).
-init_framefield(tet_mesh, surf_mesh)
-        
-        
+frames = init_framefield(tet_mesh, surf_mesh)
+
+# Determine the singular edges of the framefield.      
+singular_graph(tet_mesh, surf_mesh, frames)
 
