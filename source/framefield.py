@@ -54,8 +54,36 @@ def init_framefield(tet_mesh, surf_mesh):
     
     return frames
 
-def singular_graph(tet_mesh, surf_mesh, frames):
+def compute_onerings(tet_mesh, surf_mesh):
+    # Compute the one ring of tets surrounding each internal edge.
+    one_rings = {}
+    for ei, edge in enumerate(tet_mesh.edges):
+        # Make sure this is an internal edge, skip if it isn't.
+        if (edge[0] in surf_mesh.vertex_map and edge[1] in surf_mesh.vertex_map):
+            continue
+        # If it is, construct its one ring.
+        one_ring = []
+        finished = False
+        one_ring.append(tet_mesh.edge_adjacent_elements[ei])
+        # Walk around the edge until we've closed the one ring.
+        while not finished:
+            finished = True
+            for neighbor in tet_mesh.neighbors[one_ring[-1]]:
+                # Make sure this neighbor is a viable pick.
+                if (edge[0] in tet_mesh.elements[neighbor] and 
+                    edge[1] in tet_mesh.elements[neighbor] and
+                    neighbor not in one_ring and
+                    neighbor != -1):
+                    # Add it to the ring.
+                    one_ring.append(neighbor)
+                    finished = False
+                    break
+        # Store it in our ring dictionary (don't tell golem).
+        one_rings[ei] = one_ring
     
+    return one_rings
+
+def singular_graph(tet_mesh, one_rings, frames):
     # Compute the matchings for all pairs of face-adjacent tets.
     matchings = {}
     for pair in tet_mesh.adjacent_elements:
@@ -72,33 +100,19 @@ def singular_graph(tet_mesh, surf_mesh, frames):
         # Store the matching
         matchings[tuple(pair)] = np.argmin(args)
 
-    # Compute the one ring of tets surrounding each internal edge.
-    one_rings = {}
-    for ei, edge in enumerate(tet_mesh.edges):
-        # Make sure this is an internal edge.
-        if (edge[0] in surf_mesh.vertex_map and edge[1] in surf_mesh.vertex_map):
-            continue
-        # If it is, construct its one ring.
-        one_ring = []
-        finished = False
-        one_ring.append(tet_mesh.edge_adjacent_elements[ei])
-        # Walk around the edge until we've closed the one ring.
-        while not finished:
-            finished = True
-            for neighbor in tet_mesh.neighbors[one_ring[-1]]:
-                # Make sure this neighbor is a viable pick.
-                if (edge[0] in tet_mesh.elements[neighbor] and
-                    edge[1] in tet_mesh.elements[neighbor] and
-                    neighbor not in one_ring and
-                    neighbor != -1):
-                    # Add it to the ring.
-                    one_ring.append(neighbor)
-                    finished = False
-        # Store it in our ring dictionary (don't tell golem).
-        one_rings[ei] = one_ring
-
     # Classify the internal edges by type, and find the singular graph.
     # The edge type is determined via concatenation of the matchings on the edge's one ring.
+    for key, one_ring in one_rings.items():
+        type = []
+        i = 0
+        while i < len(one_ring):
+            pair = (one_ring[i], one_ring[(i+1) % len(one_ring)])
+            if pair not in matchings:
+                pair = pair[::-1] # reverse
+            type.append(matchings[pair])
+            i += 1
+
+        print(type)
 
 
 def optimize_framefield(tet_mesh, frames):

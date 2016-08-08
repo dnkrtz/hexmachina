@@ -10,7 +10,7 @@
 '''
 
 from smesh import SurfaceMesh
-from framefield import init_framefield, singular_graph
+from framefield import *
 from visual import *
 
 import math
@@ -44,6 +44,8 @@ surf_mesh.compute_curvatures()
 # This field is parallel to the tet list (i.e. each tet has a frame).
 frames = init_framefield(tet_mesh, surf_mesh)
 
+one_rings = compute_onerings(tet_mesh, surf_mesh)
+
 # Determine the singular edges of the framefield.      
-singular_graph(tet_mesh, surf_mesh, frames)
+singular_graph(tet_mesh, one_rings, frames)
 
