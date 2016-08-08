@@ -68,14 +68,15 @@ def compute_onerings(tet_mesh, surf_mesh):
         # Walk around the edge until we've closed the one ring.
         while not finished:
             finished = True
-            for neighbor in tet_mesh.neighbors[one_ring[-1]]:
+            for neigh_ti in tet_mesh.neighbors[one_ring[-1]]:
+                neighbor = tet_mesh.elements[neigh_ti]
                 # Make sure this neighbor is a viable pick.
-                if (edge[0] in tet_mesh.elements[neighbor] and 
-                    edge[1] in tet_mesh.elements[neighbor] and
-                    neighbor not in one_ring and
-                    neighbor != -1):
+                if (neigh_ti == -1 or neigh_ti in one_ring):
+                    continue
+                # Make sure this neighbor shares the edge.
+                if (edge[0] in neighbor and edge[1] in neighbor ):
                     # Add it to the ring.
-                    one_ring.append(neighbor)
+                    one_ring.append(neigh_ti)
                     finished = False
                     break
         # Store it in our ring dictionary (don't tell golem).
@@ -98,21 +99,36 @@ def singular_graph(tet_mesh, one_rings, frames):
                   frames[pair[0]].w - np.dot(frames[pair[1]].w, permutation.T)
             args.append(np.linalg.norm(arg))
         # Store the matching
-        matchings[tuple(pair)] = np.argmin(args)
+        matchings[tuple(pair)] = chiral_symmetries[np.argmin(args)]
 
     # Classify the internal edges by type, and find the singular graph.
-    # The edge type is determined via concatenation of the matchings on the edge's one ring.
-    for key, one_ring in one_rings.items():
-        type = []
-        i = 0
-        while i < len(one_ring):
-            pair = (one_ring[i], one_ring[(i+1) % len(one_ring)])
+    # The edge type is determined via concatenation of the matchings around the edge's one-ring.
+    lines = []
+    for ei, edge in enumerate(tet_mesh.edges):
+        try:
+            one_ring = one_rings[ei]
+        except KeyError:
+            continue
+        # Concatenate the matchings around the edge to find its type.
+        type = np.identity(3)
+        for i in range(len(one_ring)):
+            matching = []
+            pair = (one_ring[(i + 1) % len(one_ring)], one_ring[i])
+            # If pair order is reversed, invert permutation matrix
             if pair not in matchings:
                 pair = pair[::-1] # reverse
-            type.append(matchings[pair])
-            i += 1
+                matching = np.linalg.inv(matchings[pair])
+            else:
+                matching = matchings[pair]
+            # Concatenate transforms     
+            type = np.dot(type, matchings[pair])
 
-        print(type)
+        # Singular edge.
+        if not np.array_equal(type, np.identity(3)):
+            lines.append(edge)
+
+    # Plot singular edges.    
+    plot_lines(lines, tet_mesh.points)
 
 
 def optimize_framefield(tet_mesh, frames):
