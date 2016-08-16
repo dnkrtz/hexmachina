@@ -7,6 +7,7 @@ State of the Art
 A brief, non-exhaustive list of papers that inspired this implementation.
  1. [All-Hex Meshing using Singularity-Restricted Field](http://i.cs.hku.hk/~wenping/allhex.pdf)
  2. [CubeCover - Parameterization of 3D Volumes](http://www.mi.fu-berlin.de/en/math/groups/ag-geom/publications/db/2011_Nieser-Reitebuch-Polthier_CubeCover.pdf)
+ 3. [Boundary Aligned Smooth 3D Cross-Frame Field](http://www.cad.zju.edu.cn/home/hj/11/3D-cross-frame.pdf)
  3. [QuadCover - Surface Parameterization using Branched Coverings](http://www.mi.fu-berlin.de/en/math/groups/ag-geom/publications/db/KNP07-QuadCover.pdf)
  3. [Estimating Curvatures and Their Derivatives on Triangle Meshes](http://gfx.cs.princeton.edu/pubs/_2004_ECA/curvpaper.pdf)
  4. [Trivial Connections on Discrete Surfaces](http://www.multires.caltech.edu/pubs/Connections.pdf)
