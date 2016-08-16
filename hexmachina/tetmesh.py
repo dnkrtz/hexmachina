@@ -5,13 +5,18 @@
     Created: 09/07/2016
     Python Version: 3.5
     ========================
-    This module wraps MeshPy's TetGen binding to include other
-    parameters relevant to our problem.
+    This module includes both the tetrahedral mesh and
+    3D frame field initialization/optimization.
 '''
 
-import numpy as np
 
+import itertools
 import meshpy.tet
+import numpy as np
+from scipy import spatial, optimize
+
+from transforms import *
+from utils import *
 
 class Frame(object):
     def __init__(self, uvw, location, is_boundary = False):
@@ -63,4 +68,87 @@ class TetrahedralMesh(object):
             # Store it in our ring dictionary (don't tell golem).
             self.one_rings[ei] = one_ring
 
+    def init_framefield(self, surf_mesh):
+        boundary_frames = []
+        boundary_ids = {}
+        # The frame field is initialized at the boundary,
+        # based on the curvature cross-field and normals.
+        for fi, face in enumerate(surf_mesh.faces):
+            # Retrieve the tet this face belongs to.
+            ti = self.mesh.adjacent_elements[surf_mesh.face_map.inv[fi]][0]
+            tet = self.mesh.elements[ti]
+            # Ignore faces which have 0 curvature.
+            if np.isclose(surf_mesh.k1[face[0]], 0) and np.isclose(surf_mesh.k2[face[0]], 0):
+                continue
+            # @TODO(aidan) Find actual face values, not vertex values.
+            uvw = np.hstack((np.vstack(surf_mesh.pdir1[face[0]]),
+                            np.vstack(surf_mesh.pdir2[face[0]]),
+                            np.vstack(surf_mesh.vertex_normals[face[0]])))
+            boundary_frames.append(Frame(uvw, tet_centroid(self.mesh, ti)))
+            boundary_ids[ti] = len(boundary_frames) - 1
+
+        # Prepare a KDTree of boundary frame coords for quick spatial queries.
+        tree = spatial.KDTree(np.vstack([frame.location for frame in boundary_frames]))
+
+        # Now propagate the boundary frames throughout the tet mesh.
+        # Each tet frame takes the value of its nearest boundary tet.
+        for ti, tet in enumerate(self.mesh.elements):
+            location = tet_centroid(self.mesh, ti)
+            if ti in boundary_ids:
+                self.frames.append(Frame(boundary_frames[boundary_ids[ti]].uvw, location, True))
+            else:
+                nearest_ti = tree.query(location)[1] # Find closest boundary frame
+                self.frames.append(Frame(boundary_frames[nearest_ti].uvw, location, False))
+
+    # Quantify closeness of the matching to the chiral symmetry group.
+    @staticmethod
+    def pair_energy(Rs, Rt):
+        # Approximate permutation for the matching.
+        P = Rt.T * Rs
+        # Since our initialized framefield is orthogonal, we can easily quantify
+        # closeness of the permutation to the chiral symmetry group G. The cost
+        # function should drive each row/column to have a single non-zero value.
+        E = 0
+        for i in range(3):
+            E += P[i,0]**2 * P[i,1]**2 + P[i,1]**2 * P[i,2]**2 + P[i,2]**2 * P[i,0]**2
+            E += P[0,i]**2 * P[1,i]**2 + P[1,i]**2 * P[2,i]**2 + P[2,i]**2 * P[0,i]**2
+        return E
+
+    # Function E to minimize via L-BFGS.
+    def global_energy(self, euler_angles):
         
+        E = 0
+        # All internal edges.
+        for ei, edge in enumerate(self.mesh.edges):
+            if ei not in self.one_rings:
+                continue
+            # All combinations of s, t around the edges' one ring.
+            for combo in itertools.combinations(self.one_rings[ei], 2):
+                R = []
+                for i in range(2):
+                    frame = self.frames[combo[i]]
+                    if frame.is_boundary:
+                        theta = euler_angles[1]
+                        R.append(np.array([ np.cos(theta) * frame.uvw[:,0] + \
+                                            np.sin(theta) * frame.uvw[:,1],
+                                            - np.sin(theta) * frame.uvw[:,0] + \
+                                            np.cos(theta) * frame.uvw[:,1],
+                                            frame.uvw[:,2] ]))
+                    else:
+                        R.append(convert_to_R(euler_angles[0], euler_angles[1], euler_angles[2]))
+                    
+                E += self.pair_energy(R[0], R[1])
+        
+        return E
+
+    # Optimize the framefield.
+    def optimize_framefield(self):
+
+        # Define all frames in terms of euler angles.
+        euler_angles = [ np.zeros(3) for _ in range(len(self.mesh.elements)) ]
+        
+        for ti, tet in enumerate(self.mesh.elements):
+            R = self.frames[ti].uvw
+            euler_angles[ti] = convert_to_euler(R)
+
+        opti = optimize.minimize(self.global_energy, euler_angles, jac=False, method='L-BFGS-B', options={'ftol': 1e-2, 'disp':True, 'maxiter':5})

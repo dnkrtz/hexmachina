@@ -29,9 +29,9 @@ def plot_framefield(frames):
     ax = fig.add_subplot(111, projection='3d')
 
     for frame in frames:
-        # ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.u[0], frame.u[1], frame.u[2]) # U
-        # ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.v[0], frame.v[1], frame.v[2]) # V
-        ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.w[0], frame.w[1], frame.w[2]) # W
+        ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.uvw[0,0], frame.uvw[1,0], frame.uvw[2,0]) # U
+        # ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.uvw[0,1], frame.uvw[1,1], frame.uvw[2,1]) # V
+        # ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.uvw[0,2], frame.uvw[1,2], frame.uvw[2,2]) # W
     
     plt.show()
 
