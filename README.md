@@ -19,6 +19,10 @@ A non-exhaustive list of papers that inspired this implementation.
 
 Running it
 -------------
-Once you've got all the dependencies set up, just use:
+To set up the dependencies, run:
 
-    python core.py
+    pip install requirements.txt
+
+Once that's done, fire away with:
+
+    python hexmachina.py
