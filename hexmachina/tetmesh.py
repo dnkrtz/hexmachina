@@ -102,9 +102,9 @@ class TetrahedralMesh(object):
 
     # Quantify closeness of the matching to the chiral symmetry group.
     @staticmethod
-    def pair_energy(Rs, Rt):
+    def pair_energy(UVWs, UVWt):
         # Approximate permutation for the matching.
-        P = Rt.T * Rs
+        P = UVWt.T * UVWs
         # Since our initialized framefield is orthogonal, we can easily quantify
         # closeness of the permutation to the chiral symmetry group G. The cost
         # function should drive each row/column to have a single non-zero value.
@@ -117,6 +117,8 @@ class TetrahedralMesh(object):
     # Function E to minimize via L-BFGS.
     def global_energy(self, euler_angles):
         
+        print(euler_angles)
+
         E = 0
         # All internal edges.
         for ei, edge in enumerate(self.mesh.edges):
@@ -124,20 +126,23 @@ class TetrahedralMesh(object):
                 continue
             # All combinations of s, t around the edges' one ring.
             for combo in itertools.combinations(self.one_rings[ei], 2):
-                R = []
+                UVW = []
                 for i in range(2):
                     frame = self.frames[combo[i]]
                     if frame.is_boundary:
-                        theta = euler_angles[1]
-                        R.append(np.array([ np.cos(theta) * frame.uvw[:,0] + \
-                                            np.sin(theta) * frame.uvw[:,1],
-                                            - np.sin(theta) * frame.uvw[:,0] + \
-                                            np.cos(theta) * frame.uvw[:,1],
-                                            frame.uvw[:,2] ]))
+                        theta = euler_angles[3 * combo[i] + 1]
+                        UVW.append(np.array([ np.cos(theta) * frame.uvw[:,0] + \
+                                              np.sin(theta) * frame.uvw[:,1],
+                                              - np.sin(theta) * frame.uvw[:,0] + \
+                                              np.cos(theta) * frame.uvw[:,1],
+                                              frame.uvw[:,2] ]))
                     else:
-                        R.append(convert_to_R(euler_angles[0], euler_angles[1], euler_angles[2]))
+                        R = convert_to_R(euler_angles[3 * combo[i]], euler_angles[3 * combo[i] + 1], euler_angles[3 * combo[i] + 2])
+                        UVW.append(frame.uvw * R)
                     
-                E += self.pair_energy(R[0], R[1])
+                E += self.pair_energy(UVW[0], UVW[1])
+        
+        print(E)
         
         return E
 
@@ -145,10 +150,10 @@ class TetrahedralMesh(object):
     def optimize_framefield(self):
 
         # Define all frames in terms of euler angles.
-        euler_angles = [ np.zeros(3) for _ in range(len(self.mesh.elements)) ]
+        euler_angles = np.zeros(3 * len(self.mesh.elements))
         
-        for ti, tet in enumerate(self.mesh.elements):
-            R = self.frames[ti].uvw
-            euler_angles[ti] = convert_to_euler(R)
+        # for ti, tet in enumerate(self.mesh.elements):
+        #     R = self.frames[ti].uvw
+        #     euler_angles[ti] = convert_to_euler(R)
 
         opti = optimize.minimize(self.global_energy, euler_angles, jac=False, method='L-BFGS-B', options={'ftol': 1e-2, 'disp':True, 'maxiter':5})

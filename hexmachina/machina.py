@@ -47,6 +47,7 @@ print('Optimizing framefield...')
 tet_mesh.optimize_framefield()
 
 # # Determine the singular edges of the framefield.      
+# print("Drawing singular graph...")
 # singular_graph(tet_mesh)
 
 
