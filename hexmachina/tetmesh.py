@@ -102,17 +102,17 @@ class TetrahedralMesh(object):
 
     # Quantify closeness of the matching to the chiral symmetry group.
     @staticmethod
-    def pair_energy(UVWs, UVWt):
+    def pair_energy(UVW_s, UVW_t):
         # Approximate permutation for the matching.
-        P = UVWt.T * UVWs
+        P = UVW_t.T * UVW_s
         # Since our initialized framefield is orthogonal, we can easily quantify
         # closeness of the permutation to the chiral symmetry group G. The cost
         # function should drive each row/column to have a single non-zero value.
-        E = 0
+        E_st = 0
         for i in range(3):
-            E += P[i,0]**2 * P[i,1]**2 + P[i,1]**2 * P[i,2]**2 + P[i,2]**2 * P[i,0]**2
-            E += P[0,i]**2 * P[1,i]**2 + P[1,i]**2 * P[2,i]**2 + P[2,i]**2 * P[0,i]**2
-        return E
+            E_st += P[i,0]**2 * P[i,1]**2 + P[i,1]**2 * P[i,2]**2 + P[i,2]**2 * P[i,0]**2
+            E_st += P[0,i]**2 * P[1,i]**2 + P[1,i]**2 * P[2,i]**2 + P[2,i]**2 * P[0,i]**2
+        return E_st
 
     # Function E to minimize via L-BFGS.
     def global_energy(self, euler_angles):
@@ -146,14 +146,26 @@ class TetrahedralMesh(object):
         
         return E
 
+    def global_gradient(self, euler_angles):
+
+        Eg = 0
+        for ei, edge in enumerate(self.mesh.edges):
+            if ei not in self.one_rings:
+                continue
+            for 
+
+
     # Optimize the framefield.
     def optimize_framefield(self):
 
         # Define all frames in terms of euler angles.
-        euler_angles = np.zeros(3 * len(self.mesh.elements))
+        euler_angles = [ np.zeros(3) for _ in range(len(self.mesh.elements)) ]
         
-        # for ti, tet in enumerate(self.mesh.elements):
-        #     R = self.frames[ti].uvw
-        #     euler_angles[ti] = convert_to_euler(R)
+        for ti, tet in enumerate(self.mesh.elements):
+            if self.frames[ti].is_boundary:
+                continue
+            else:
+                R = self.frames[ti].uvw
+                euler_angles[ti] = convert_to_euler(R)
 
         opti = optimize.minimize(self.global_energy, euler_angles, jac=False, method='L-BFGS-B', options={'ftol': 1e-2, 'disp':True, 'maxiter':5})

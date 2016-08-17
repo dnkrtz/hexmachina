@@ -43,6 +43,7 @@ tet_mesh.compute_onerings(surf_mesh)
 print('Initializing framefield...')
 tet_mesh.init_framefield(surf_mesh)
 
+# Optimize 3D frame field by L-BFGS minimization.
 print('Optimizing framefield...')
 tet_mesh.optimize_framefield()
 
