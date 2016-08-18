@@ -37,7 +37,7 @@ print('Computing normals and curvatures...')
 surf_mesh.compute_normals()
 # Compute principal curvatures and directions.
 surf_mesh.compute_curvatures()
-
+# Output curvature crossfield to .vtk file.
 vtk_curvature(surf_mesh)
 
 # Compute the tetrahedral one-rings of the mesh.
@@ -48,16 +48,18 @@ tet_mesh.compute_onerings(surf_mesh)
 # This field is parallel to the tet list (i.e. each tet has a frame).
 print('Initializing framefield...')
 tet_mesh.init_framefield(surf_mesh)
-
+# Output frame field to .vtk file.
 vtk_framefield(tet_mesh.frames)
 
 # # Optimize 3D frame field by L-BFGS minimization.
 # print('Optimizing framefield...')
 # tet_mesh.optimize_framefield()
 
-# # Determine the singular edges of the framefield.      
-# print("Drawing singular graph...")
-# singular_graph(tet_mesh)
+# Determine the singular edges of the framefield.      
+print("Computing singular graph...")
+singular_edges = singular_graph(tet_mesh)
+# Output singular graph to .vtk file.
+vtk_lines(tet_mesh.mesh.points, singular_edges)
 
 
 

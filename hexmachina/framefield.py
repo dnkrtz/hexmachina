@@ -31,7 +31,7 @@ def singular_graph(tet_mesh):
 
     # Classify the internal edges by type, and find the singular graph.
     # The edge type is determined via concatenation of the matchings around the edge's one-ring.
-    lines = []
+    singular_edges = []
     for ei, edge in enumerate(tet_mesh.mesh.edges):
         try:
             one_ring = tet_mesh.one_rings[ei]
@@ -53,10 +53,9 @@ def singular_graph(tet_mesh):
 
         # Singular edge.
         if not np.array_equal(etype, np.identity(3)):
-            lines.append(edge)
+            singular_edges.append(edge)
 
-    # Plot singular edges.    
-    plot_lines(lines, tet_mesh.mesh.points)
+    return singular_edges
 
 
 

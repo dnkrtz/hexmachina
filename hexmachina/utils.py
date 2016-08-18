@@ -70,3 +70,11 @@ def vtk_curvature(surf_mesh):
         'Curvature cross-field')
 
     vtk.tofile('../io/vtk/curvature')
+
+# Outputs a set of lines as a .vtk file for paraview.
+def vtk_lines(points, lines):
+    vtk = VtkData(\
+          UnstructuredGrid(points, line=lines),
+          'Singular graph')
+
+    vtk.tofile('../io/vtk/singular_graph')
