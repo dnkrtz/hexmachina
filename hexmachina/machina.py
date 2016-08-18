@@ -17,24 +17,30 @@ from surfacemesh import SurfaceMesh
 from tetmesh import TetrahedralMesh
 from framefield import *
 from visual import *
+from utils import *
 
+print('Reading triangle mesh...')
 tri_mesh = trimesh.load_mesh('../io/cylinder.stl')
+
 # Instantiate tetrahedral mesh
 print('Generating tetrahedral mesh...')
 tet_mesh = TetrahedralMesh(tri_mesh)
 # Output tetrahedral mesh
-tet_mesh.mesh.write_vtk("../io/test.vtk")
+
+vtk_tetmesh(tet_mesh.mesh)
 
 # Construct boundary surface of tetrahedral mesh.
 print('Extracting surface mesh...')
 surf_mesh = SurfaceMesh(tet_mesh.mesh)
-
 print('Computing normals and curvatures...')
 # Compute face and vertex normals.
 surf_mesh.compute_normals()
 # Compute principal curvatures and directions.
 surf_mesh.compute_curvatures()
 
+vtk_curvature(surf_mesh)
+
+# Compute the tetrahedral one-rings of the mesh.
 print('Computing tetrahedral one-rings...')
 tet_mesh.compute_onerings(surf_mesh)
 
@@ -43,9 +49,11 @@ tet_mesh.compute_onerings(surf_mesh)
 print('Initializing framefield...')
 tet_mesh.init_framefield(surf_mesh)
 
-# Optimize 3D frame field by L-BFGS minimization.
-print('Optimizing framefield...')
-tet_mesh.optimize_framefield()
+vtk_framefield(tet_mesh.frames)
+
+# # Optimize 3D frame field by L-BFGS minimization.
+# print('Optimizing framefield...')
+# tet_mesh.optimize_framefield()
 
 # # Determine the singular edges of the framefield.      
 # print("Drawing singular graph...")

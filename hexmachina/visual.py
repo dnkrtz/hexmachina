@@ -24,17 +24,6 @@ def plot_vectors(vectors, points):
 
     plt.show()
 
-def plot_framefield(frames):
-    fig = plt.figure(num=None, figsize=(12, 10), dpi=80)
-    ax = fig.add_subplot(111, projection='3d')
-
-    for frame in frames:
-        ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.uvw[0,0], frame.uvw[1,0], frame.uvw[2,0]) # U
-        # ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.uvw[0,1], frame.uvw[1,1], frame.uvw[2,1]) # V
-        # ax.quiver(frame.location[0], frame.location[1], frame.location[2], frame.uvw[0,2], frame.uvw[1,2], frame.uvw[2,2]) # W
-    
-    plt.show()
-
 def plot_lines(lines, points):
     fig = plt.figure(num=None, figsize=(12, 10), dpi=80)
     ax = fig.add_subplot(111, projection='3d')

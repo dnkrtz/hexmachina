@@ -29,6 +29,7 @@ class TetrahedralMesh(object):
     def __init__(self, tri_mesh):
         mesh_info = meshpy.tet.MeshInfo()
         # Define MeshPy options.
+        # @TODO Investigate why the -Y switch messes up surface extraction (facets?)
         opt = meshpy.tet.Options(switches='pqnn', facesout=True, edgesout=True)
         # Generate tetrahedral mesh.
         mesh_info.set_points(tri_mesh.vertices)
@@ -103,7 +104,7 @@ class TetrahedralMesh(object):
     # Quantify closeness of the matching to the chiral symmetry group.
     @staticmethod
     def pair_energy(UVW_s, UVW_t):
-        # Approximate permutation for the matching.
+        # Approximate permutation for the transformation from s-t.
         P = UVW_t.T * UVW_s
         # Since our initialized framefield is orthogonal, we can easily quantify
         # closeness of the permutation to the chiral symmetry group G. The cost
@@ -116,8 +117,6 @@ class TetrahedralMesh(object):
 
     # Function E to minimize via L-BFGS.
     def global_energy(self, euler_angles):
-        
-        print(euler_angles)
 
         E = 0
         # All internal edges.
@@ -138,34 +137,35 @@ class TetrahedralMesh(object):
                                               frame.uvw[:,2] ]))
                     else:
                         R = convert_to_R(euler_angles[3 * combo[i]], euler_angles[3 * combo[i] + 1], euler_angles[3 * combo[i] + 2])
-                        UVW.append(frame.uvw * R)
+                        UVW.append(R)
                     
                 E += self.pair_energy(UVW[0], UVW[1])
         
-        print(E)
-        
         return E
-
-    def global_gradient(self, euler_angles):
-
-        Eg = 0
-        for ei, edge in enumerate(self.mesh.edges):
-            if ei not in self.one_rings:
-                continue
-            for 
-
 
     # Optimize the framefield.
     def optimize_framefield(self):
 
         # Define all frames in terms of euler angles.
-        euler_angles = [ np.zeros(3) for _ in range(len(self.mesh.elements)) ]
+        euler_angles = np.zeros( (len(self.mesh.elements), 3) )
         
         for ti, tet in enumerate(self.mesh.elements):
             if self.frames[ti].is_boundary:
                 continue
             else:
                 R = self.frames[ti].uvw
-                euler_angles[ti] = convert_to_euler(R)
+                euler_angles[ti,:] = convert_to_euler(R)
 
-        opti = optimize.minimize(self.global_energy, euler_angles, jac=False, method='L-BFGS-B', options={'ftol': 1e-2, 'disp':True, 'maxiter':5})
+        # @TODO Compute gradient and pass it here, numerical approximation is super expensive...
+        opti = optimize.minimize(self.global_energy, euler_angles, method='L-BFGS-B', jac = False,
+                                 options={'ftol': 1e-2, 'maxiter': 2, 'disp': True}).x
+
+        # Once optimization is complete, save results
+        for fi, frame in enumerate(self.frames):
+            if frame.is_boundary:
+                theta = opti[3 * fi + 1]
+                frame.uvw = np.hstack( (np.vstack(np.cos(theta) * frame.uvw[:,0] + np.sin(theta) * frame.uvw[:,1]),
+                                        np.vstack(- np.sin(theta) * frame.uvw[:,0] + np.cos(theta) * frame.uvw[:,1]),
+                                        np.vstack(frame.uvw[:,2])) )
+            else:
+                frame.uvw = convert_to_R(opti[3 * fi], opti[3 * fi + 1], opti[3 * fi + 2])

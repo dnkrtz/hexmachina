@@ -12,10 +12,10 @@
 
 from utils import normalize
 
+from bidict import bidict
 import math
 import meshpy.tet
 import numpy as np
-from bidict import bidict
 
 class SurfaceMesh(object):
 

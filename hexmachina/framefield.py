@@ -38,7 +38,7 @@ def singular_graph(tet_mesh):
         except KeyError:
             continue
         # Concatenate the matchings around the edge to find its type.
-        type = np.identity(3)
+        etype = np.identity(3)
         for i in range(len(one_ring)):
             matching = []
             pair = (one_ring[i], one_ring[(i + 1) % len(one_ring)])
@@ -49,10 +49,10 @@ def singular_graph(tet_mesh):
             else:
                 matching = matchings[pair]
             # Concatenate transforms     
-            type = np.dot(type, matchings[pair])
+            etype = np.dot(etype, matchings[pair])
 
         # Singular edge.
-        if not np.array_equal(type, np.identity(3)):
+        if not np.array_equal(etype, np.identity(3)):
             lines.append(edge)
 
     # Plot singular edges.    
