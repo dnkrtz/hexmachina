@@ -56,12 +56,12 @@ class TetrahedralMesh(object):
             while not finished:
                 finished = True
                 for neigh_ti in self.mesh.neighbors[one_ring[-1]]:
-                    neighbor = self.mesh.elements[neigh_ti]
                     # Make sure this neighbor is a viable pick.
                     if (neigh_ti == -1 or neigh_ti in one_ring):
                         continue
+                    neighbor = self.mesh.elements[neigh_ti]
                     # Make sure this neighbor shares the edge.
-                    if (edge[0] in neighbor and edge[1] in neighbor ):
+                    if (edge[0] in neighbor and edge[1] in neighbor):
                         # Add it to the ring.
                         one_ring.append(neigh_ti)
                         finished = False
