@@ -29,18 +29,52 @@ def convert_to_euler(R):
     return np.array([alpha, beta, gamma])
 
 # Computes the rotation matrix for a given set of euler angles.
-def convert_to_R(alpha, beta, gamma):
-    # Alpha rotation (Rx)
-    c, s = np.cos(alpha), np.sin(alpha)
-    Rx = np.matrix([[1, 0, 0], [0, c, -s], [0, s, c]])
-    # Beta rotation (Ry)
-    c, s = np.cos(beta), np.sin(beta)
-    Ry = np.matrix([[c, 0, s], [0, 1, 0], [-s, 0, c]])
-    # Gamma rotation (Rz)
-    c, s = np.cos(gamma), np.sin(gamma)
-    Rz = np.matrix([[c, -s, 0], [s, c, 0], [0, 0, 1]])
-    # Concatenate
-    return Rx * Ry * Rz
+def convert_to_R(frame, alpha, beta, gamma):
+    # Full rotation.
+    c = [ np.cos(alpha), np.cos(beta), np.cos(gamma) ]
+    s = [ np.sin(alpha), np.sin(beta), np.sin(gamma) ]
+    R = np.identity(3)
+    if frame.is_boundary:
+        R = np.matrix(np.hstack((
+            c[1] * frame.uvw[:,0:1] + s[1] * frame.uvw[:,1:2],
+            - s[1] * frame.uvw[:,0:1] + c[1] * frame.uvw[:,1:2],
+            frame.uvw[:,2:3]
+        )))
+    else:
+        R = np.matrix([
+            [c[1]*c[0], s[2]*s[1]*c[0] - c[2]*s[0], c[2]*s[1]*c[0] + s[2]*s[0]],
+            [c[1]*s[0], s[2]*s[1]*s[0] + c[2]*c[0], c[2]*s[1]*s[0] - s[2]*c[0]],
+            [-s[1], s[2]*c[1], c[2]*c[1]]
+        ])
+    return R
+
+# Compute the partial derivatives of R wrt to euler angles.
+def convert_to_dR(frame, alpha, beta, gamma):
+    c = [ np.cos(alpha), np.cos(beta), np.cos(gamma) ]
+    s = [ np.sin(alpha), np.sin(beta), np.sin(gamma) ]
+    # We will have one partial derivative per euler angle.
+    dR = [ np.zeros( (3,3) ) for _ in range(3) ]
+    if frame.is_boundary:
+        dR[1] = np.matrix(np.hstack((
+                -s[1] * frame.uvw[:,0:1] + c[1] * frame.uvw[:,1:2],
+                -c[1] * frame.uvw[:,0:1] - s[1] * frame.uvw[:,1:2],
+                [[0],[0],[0]] )))
+    else:
+        dR[0] = np.matrix([
+                [-c[1]*s[0], - s[2]*s[1]*s[0] - c[2]*c[0], - c[2]*s[1]*s[0] + s[2]*c[0]],
+                [c[1]*c[0], s[2]*s[1]*c[0] - c[2]*s[0], c[2]*s[1]*c[0] + s[2]*s[0]],
+                [0, 0, 0] ])
+        dR[1] = np.matrix([
+                [- s[1]*c[0], s[2]*c[1]*c[0], c[2]*c[1]*c[0]],
+                [- s[1]*s[0], s[2]*c[1]*s[0], c[2]*s[1]*c[0]],
+                [- c[1], - s[2]*s[1], - c[2]*s[1]] ])
+        dR[2] = np.matrix([
+                [0, c[2]*s[1]*c[0] + s[2]*s[0], - s[2]*s[1]*c[0] + c[2]*s[0]],
+                [0, c[2]*s[1]*s[0] - s[2]*c[0], - s[2]*s[1]*s[0] - c[2]*c[0]],
+                [0, c[2]*c[1], - s[2]*c[1]] ])
+
+    return dR   
+
 
 # The cubical chiral symmetry group G.
 chiral_symmetries = [

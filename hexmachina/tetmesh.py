@@ -101,11 +101,11 @@ class TetrahedralMesh(object):
                 nearest_ti = tree.query(location)[1] # Find closest boundary frame
                 self.frames.append(Frame(boundary_frames[nearest_ti].uvw, location, False))
 
-    # Quantify closeness of the matching to the chiral symmetry group.
+    # Quantify adjacent frame smoothness.
     @staticmethod
-    def pair_energy(UVW_s, UVW_t):
+    def pair_energy(F_s, F_t):
         # Approximate permutation for the transformation from s-t.
-        P = UVW_t.T * UVW_s
+        P = F_t.T * F_s
         # Since our initialized framefield is orthogonal, we can easily quantify
         # closeness of the permutation to the chiral symmetry group G. The cost
         # function should drive each row/column to have a single non-zero value.
@@ -114,6 +114,24 @@ class TetrahedralMesh(object):
             E_st += P[i,0]**2 * P[i,1]**2 + P[i,1]**2 * P[i,2]**2 + P[i,2]**2 * P[i,0]**2
             E_st += P[0,i]**2 * P[1,i]**2 + P[1,i]**2 * P[2,i]**2 + P[2,i]**2 * P[0,i]**2
         return E_st
+
+    # Quantify adjacent frame smoothness derivative (for energy gradient).
+    @staticmethod
+    def pair_energy_deriv(F_s, F_t, dF_s, dF_t):
+        # Approximate permutation and its derivative (chain rule).
+        P = F_t.T * F_s
+        dP = dF_t.T * F_s + F_t.T * dF_s
+        # More chain rule in the energy function H(n).
+        dE_st = 0
+        for i in range(3):
+            dE_st += (2 * dP[i,0] * P[i,0] * P[i,1]**2) + (2 * P[i,0]**2 * dP[i,1] * P[i,1]) + \
+                     (2 * dP[i,1] * P[i,1] * P[i,2]**2) + (2 * P[i,1]**2 * dP[i,2] * P[i,2]) + \
+                     (2 * dP[i,2] * P[i,2] * P[i,0]**2) + (2 * P[i,2]**2 * dP[i,0] * P[i,0])
+            dE_st += (2 * dP[0,i] * P[0,i] * P[1,i]**2) + (2 * P[0,i]**2 * dP[1,i] * P[1,i]) + \
+                     (2 * dP[1,i] * P[1,i] * P[2,i]**2) + (2 * P[1,i]**2 * dP[2,i] * P[2,i]) + \
+                     (2 * dP[2,i] * P[2,i] * P[0,i]**2) + (2 * P[2,i]**2 * dP[0,i] * P[0,i])
+        return dE_st
+
 
     # Function E to minimize via L-BFGS.
     def global_energy(self, euler_angles):
@@ -126,22 +144,41 @@ class TetrahedralMesh(object):
             # All combinations of s, t around the edges' one ring.
             for combo in itertools.combinations(self.one_rings[ei], 2):
                 UVW = []
-                for i in range(2):
-                    frame = self.frames[combo[i]]
-                    if frame.is_boundary:
-                        theta = euler_angles[3 * combo[i] + 1]
-                        UVW.append(np.array([ np.cos(theta) * frame.uvw[:,0] + \
-                                              np.sin(theta) * frame.uvw[:,1],
-                                              - np.sin(theta) * frame.uvw[:,0] + \
-                                              np.cos(theta) * frame.uvw[:,1],
-                                              frame.uvw[:,2] ]))
-                    else:
-                        R = convert_to_R(euler_angles[3 * combo[i]], euler_angles[3 * combo[i] + 1], euler_angles[3 * combo[i] + 2])
-                        UVW.append(R)
+                for i in [combo[0], combo[1]]:
+                    frame = self.frames[i]
+                    R = convert_to_R(frame, euler_angles[3*i], euler_angles[3*i + 1], euler_angles[3*i + 2])
+                    UVW.append(R)
                     
                 E += self.pair_energy(UVW[0], UVW[1])
         
         return E
+
+    def global_gradient(self, euler_angles):
+        
+        # Partial derivative wrt each euler angle
+        Eg = np.zeros( (len(self.mesh.elements), 3) )
+
+        # All internal edges.
+        for ei, edge in enumerate(self.mesh.edges):
+            if ei not in self.one_rings:
+                continue
+            # All combinations of s, t around the edges' one ring.
+            for combo in itertools.combinations(self.one_rings[ei], 2):
+                UVW = []
+                dUVW = []
+                for i in [combo[0], combo[1]]:
+                    frame = self.frames[i]
+                    R = convert_to_R(frame, euler_angles[3*i], euler_angles[3*i + 1], euler_angles[3*i + 2])
+                    UVW.append(R)
+                    # Partial derivative wrt each angle.
+                    dR = convert_to_dR(frame, euler_angles[3*i], euler_angles[3*i + 1], euler_angles[3*i + 2])
+                    dUVW.append(dR)
+
+                for i in range(3):
+                    Eg[combo[0],i] += self.pair_energy_deriv(UVW[0], UVW[1], dUVW[0][i], np.zeros((3,3)) )
+                    Eg[combo[1],i] += self.pair_energy_deriv(UVW[0], UVW[1], np.zeros((3,3)), dUVW[1][i])
+
+        return Eg.flatten()
 
     # Optimize the framefield.
     def optimize_framefield(self):
@@ -156,16 +193,13 @@ class TetrahedralMesh(object):
                 R = self.frames[ti].uvw
                 euler_angles[ti,:] = convert_to_euler(R)
 
+        euler_angles = euler_angles.flatten()
+
         # @TODO Compute gradient and pass it here, numerical approximation is super expensive...
-        opti = optimize.minimize(self.global_energy, euler_angles, method='L-BFGS-B', jac = False,
-                                 options={'ftol': 1e-2, 'maxiter': 2, 'disp': True}).x
+        opti = optimize.minimize(self.global_energy, euler_angles, method='L-BFGS-B', jac = self.global_gradient,
+                                 options={'ftol': 1e-4, 'maxiter': 100, 'disp': True}).x
 
         # Once optimization is complete, save results
         for fi, frame in enumerate(self.frames):
-            if frame.is_boundary:
-                theta = opti[3 * fi + 1]
-                frame.uvw = np.hstack( (np.vstack(np.cos(theta) * frame.uvw[:,0] + np.sin(theta) * frame.uvw[:,1]),
-                                        np.vstack(- np.sin(theta) * frame.uvw[:,0] + np.cos(theta) * frame.uvw[:,1]),
-                                        np.vstack(frame.uvw[:,2])) )
-            else:
-                frame.uvw = convert_to_R(opti[3 * fi], opti[3 * fi + 1], opti[3 * fi + 2])
+            # Make sure to store as ndarray, not matrix. Else pyvtk goes bonkers.
+            frame.uvw = convert_to_R(frame, opti[3 * fi], opti[3 * fi + 1], opti[3 * fi + 2]).getA()

@@ -48,12 +48,17 @@ tet_mesh.compute_onerings(surf_mesh)
 # This field is parallel to the tet list (i.e. each tet has a frame).
 print('Initializing framefield...')
 tet_mesh.init_framefield(surf_mesh)
+
+print(tet_mesh.frames[0].uvw)
+
+# Optimize 3D frame field by L-BFGS minimization.
+print('Optimizing framefield...')
+tet_mesh.optimize_framefield()
+
+print(tet_mesh.frames[0].uvw)
+
 # Output frame field to .vtk file.
 vtk_framefield(tet_mesh.frames)
-
-# # Optimize 3D frame field by L-BFGS minimization.
-# print('Optimizing framefield...')
-# tet_mesh.optimize_framefield()
 
 # Determine the singular edges of the framefield.      
 print("Computing singular graph...")
