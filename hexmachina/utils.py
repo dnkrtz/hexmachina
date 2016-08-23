@@ -29,26 +29,21 @@ def vtk_tetmesh(mesh):
 def vtk_framefield(frames):
     points = []
     for frame in frames:
-        points.append((frame.location + frame.uvw[:,0] / 2).tolist())
-        points.append((frame.location - frame.uvw[:,0] / 2).tolist())
-        points.append((frame.location + frame.uvw[:,1] / 2).tolist())
-        points.append((frame.location - frame.uvw[:,1] / 2).tolist())
-        points.append((frame.location + frame.uvw[:,2] / 2).tolist())
-        points.append((frame.location - frame.uvw[:,2] / 2).tolist())
+        points.append(frame.location + frame.uvw[:,0] / 2)
+        points.append(frame.location - frame.uvw[:,0] / 2)
+        points.append(frame.location + frame.uvw[:,1] / 2)
+        points.append(frame.location - frame.uvw[:,1] / 2)
+        points.append(frame.location + frame.uvw[:,2] / 2)
+        points.append(frame.location - frame.uvw[:,2] / 2)
     lines = []
     line_colors = []
     for i in range(len(frames)):
         lines.append([6*i, 6*i + 1])
-        line_colors.append(0)
         lines.append([6*i + 2, 6*i + 3])
-        line_colors.append(1)
         lines.append([6*i + 4, 6*i + 5])
-        line_colors.append(2)
 
     structure = PolyData(points=points, lines=lines)
-    line_data = CellData(Scalars(line_colors, name='line_colors'))
-
-    vtk = VtkData(structure, line_data, 'Volumetric frame-field')
+    vtk = VtkData(structure, 'Volumetric frame-field')
 
     vtk.tofile('../io/vtk/field')
 
@@ -56,10 +51,10 @@ def vtk_framefield(frames):
 def vtk_curvature(surf_mesh):
     points = []
     for vi, vertex in enumerate(surf_mesh.vertices):
-        points.append((vertex + surf_mesh.pdir1[vi] / 2).tolist())
-        points.append((vertex - surf_mesh.pdir1[vi] / 2).tolist())
-        points.append((vertex + surf_mesh.pdir2[vi] / 2).tolist())
-        points.append((vertex - surf_mesh.pdir2[vi] / 2).tolist())
+        points.append(vertex + surf_mesh.pdir1[vi] / 2)
+        points.append(vertex - surf_mesh.pdir1[vi] / 2)
+        points.append(vertex + surf_mesh.pdir2[vi] / 2)
+        points.append(vertex - surf_mesh.pdir2[vi] / 2)
     lines = []
     for i in range(len(surf_mesh.vertices)):
         lines.append([4*i, 4*i + 1])

@@ -16,8 +16,8 @@ import trimesh
 from surfacemesh import SurfaceMesh
 from tetmesh import TetrahedralMesh
 from framefield import *
-from visual import *
 from utils import *
+from optimization import *
 
 print('Reading triangle mesh...')
 tri_mesh = trimesh.load_mesh('../io/cylinder.stl')
@@ -53,7 +53,7 @@ print(tet_mesh.frames[0].uvw)
 
 # Optimize 3D frame field by L-BFGS minimization.
 print('Optimizing framefield...')
-tet_mesh.optimize_framefield()
+optimize_framefield(tet_mesh)
 
 print(tet_mesh.frames[0].uvw)
 
