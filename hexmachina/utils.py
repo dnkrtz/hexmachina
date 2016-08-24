@@ -22,11 +22,11 @@ def tet_centroid(tet_mesh, ti):
              np.array(tet_mesh.points[tet_mesh.elements[ti][3]]) ) / 4
 
 # Write tetrahedral mesh as .vtk file for paraview.
-def vtk_tetmesh(mesh):
-    mesh.write_vtk("../io/vtk/tetmesh.vtk")
+def vtk_tetmesh(mesh, filename):
+    mesh.write_vtk("../io/vtk/%s.vtk" % filename)
 
 # Write 3D frame field as .vtk file for paraview.
-def vtk_framefield(frames):
+def vtk_framefield(frames, filename):
     points = []
     for frame in frames:
         points.append(frame.location + frame.uvw[:,0] / 2)
@@ -45,10 +45,10 @@ def vtk_framefield(frames):
     structure = PolyData(points=points, lines=lines)
     vtk = VtkData(structure, 'Volumetric frame-field')
 
-    vtk.tofile('../io/vtk/field')
+    vtk.tofile('../io/vtk/%s' % filename)
 
 # Outputs the curvature cross-field as a .vtk file for paraview.
-def vtk_curvature(surf_mesh):
+def vtk_curvature(surf_mesh, filename):
     points = []
     for vi, vertex in enumerate(surf_mesh.vertices):
         points.append(vertex + surf_mesh.pdir1[vi] / 2)
@@ -65,12 +65,12 @@ def vtk_curvature(surf_mesh):
 
     vtk = VtkData(structure, 'Curvature cross-field')
 
-    vtk.tofile('../io/vtk/curvature')
+    vtk.tofile('../io/vtk/%s' % filename)
 
 # Outputs a set of lines as a .vtk file for paraview.
-def vtk_lines(points, lines):
+def vtk_lines(points, lines, filename):
     vtk = VtkData(\
           UnstructuredGrid(points, line=lines),
           'Singular graph')
 
-    vtk.tofile('../io/vtk/singular_graph')
+    vtk.tofile('../io/vtk/%s' % filename)

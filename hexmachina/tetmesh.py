@@ -70,23 +70,6 @@ class TetrahedralMesh(object):
             # Store it in our ring dictionary (don't tell golem).
             self.one_rings[ei] = one_ring
 
-    # Compute the matchings for all pairs of face-adjacent tets.
-    # We use matchings to characterize closeness between two frames s and t.
-    # It is essentially the chiral permutation that most closely defines
-    # the rotation between them.
-    def compute_matchings(self):
-        # Loop through all pairs of face-adjacent tets.
-        for pair in self.mesh.adjacent_elements:
-            args = []
-            if -1 in pair:
-                continue # Boundary face
-            # Find the best permutation to characterize closeness.
-            for permutation in chiral_symmetries:
-                arg = self.frames[pair[0]].uvw - self.frames[pair[1]].uvw * permutation.T
-                args.append(np.linalg.norm(arg))
-            # Store the matching
-            self.matchings[tuple(pair)] = chiral_symmetries[np.argmin(args)]
-
     # Initialize the frame field based on surface curvature and normals.
     def init_framefield(self, surf_mesh):
         boundary_frames = []

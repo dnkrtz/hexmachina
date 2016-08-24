@@ -23,57 +23,51 @@ print('Reading triangle mesh...')
 tri_mesh = trimesh.load_mesh('../io/cylinder.stl')
 
 # Instantiate tetrahedral mesh
-print('Generating tetrahedral mesh...')
+print('Generating tetrahedral mesh...', end=" ")
 tet_mesh = TetrahedralMesh(tri_mesh)
 # Output tetrahedral mesh
-
-vtk_tetmesh(tet_mesh.mesh)
-
-print('\033[92m Tetrahedral mesh generation succesful. \033[0m')
+vtk_tetmesh(tet_mesh.mesh, 'tet_mesh')
+print('\033[92m OK. \033[0m')
 
 # Construct boundary surface of tetrahedral mesh.
-print('Extracting surface mesh...')
+print('Extracting surface mesh and curvatures/normals...', end=" ")
 surf_mesh = SurfaceMesh(tet_mesh.mesh)
-
-print('Computing normals and curvatures...')
 # Compute face and vertex normals.
 surf_mesh.compute_normals()
 # Compute principal curvatures and directions.
 surf_mesh.compute_curvatures()
 # Output curvature crossfield to .vtk file.
-vtk_curvature(surf_mesh)
-
-print('\033[92m Boundary computations succesful. \033[0m')
+vtk_curvature(surf_mesh, 'curvature')
+print('\033[92m OK. \033[0m')
 
 # Construct 3D frame field as an array of (U, V, W) frames.
 # This field is parallel to the tet list (i.e. each tet has a frame).
-print('Initializing framefield...')
+print('Initializing framefield...', end=" ")
 # Compute the tetrahedral one-rings of the mesh.
 tet_mesh.compute_onerings(surf_mesh)
 # Construct frame field.
 tet_mesh.init_framefield(surf_mesh)
+print('\033[92m OK. \033[0m')
 
-print('\033[92m Frame initialization succesful. \033[0m')
-
-# Optimize 3D frame field by L-BFGS minimization.
-print('Optimizing framefield...')
-tet_mesh.optimize_framefield()
-
-print('\033[92m Framefield optimization succesful. \033[0m')
+# # Optimize 3D frame field by L-BFGS minimization.
+# print('Optimizing framefield...')
+# tet_mesh.optimize_framefield()
 
 # Output frame field to .vtk file.
-vtk_framefield(tet_mesh.frames)
+vtk_framefield(tet_mesh.frames, 'field')
 
 # Compute the pair matchings.
-print("Computing all pair matchings...")
-tet_mesh.compute_matchings()
+print("Computing all pair matchings...", end=" ")
+compute_matchings(tet_mesh)
+print('\033[92m OK. \033[0m')
 
 # Determine the singular edges of the framefield.      
-print("Computing singular graph...")
-# Find the singular graph.
-singular_edges = singular_graph(tet_mesh)
+print("Computing singular graph...", end=" ")
+singular_edges, improper_edges = singular_graph(tet_mesh)
 # Output singular graph to .vtk file.
-vtk_lines(tet_mesh.mesh.points, singular_edges)
+vtk_lines(tet_mesh.mesh.points, singular_edges, 'singular')
+vtk_lines(tet_mesh.mesh.points, improper_edges, 'improper')
+print('\033[92m OK. \033[0m')
 
 
 
