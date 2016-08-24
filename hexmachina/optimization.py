@@ -4,7 +4,6 @@ from scipy import optimize
 import multiprocessing as mp
 
 from transforms import *
-from tetmesh import TetrahedralMesh
 
 # Quantify adjacent frame smoothness.
 def pair_energy(F_s, F_t):
@@ -92,33 +91,3 @@ def global_energy(euler_angles, tet_mesh):
     pool.join()
     
     return E, dE
-
-# Optimize the framefield.
-def optimize_framefield(tet_mesh):
-
-    # Define all frames in terms of euler angles.
-    euler_angles = np.zeros( (len(tet_mesh.mesh.elements), 3) )
-    
-    for ti, tet in enumerate(tet_mesh.mesh.elements):
-        # Boundary tets have only one degree of freedom in the
-        # optimization, we inialize this angle to zero.
-        if tet_mesh.frames[ti].is_boundary:
-            continue
-        # Internal tets have three degrees of freedom. Their
-        # current frame must be converted to an euler angle
-        # representation as the initial data.
-        else:
-            R = tet_mesh.frames[ti].uvw
-            euler_angles[ti,:] = convert_to_euler(R)
-
-    # This gets flattened by scipy.optimize, so do it preemptively.
-    euler_angles = euler_angles.flatten()
-
-    # Using scipy's L-BFGS to minimize the energy function.
-    opti = optimize.minimize(global_energy, euler_angles, args=(tet_mesh,), method='L-BFGS-B', jac = True,
-                                options={'ftol': 1e-4, 'maxiter': 12, 'disp': True}).x
-
-    # Once optimization is complete, save results
-    for fi, frame in enumerate(tet_mesh.frames):
-        # Make sure to store as ndarray, not matrix. Otherwise pyvtk goes bonkers.
-        frame.uvw = convert_to_R(frame, opti[3 * fi], opti[3 * fi + 1], opti[3 * fi + 2]).getA()

@@ -15,22 +15,6 @@ from visual import *
 from tetmesh import *
 
 def singular_graph(tet_mesh):
-    # We use matchings to characterize closeness between two frames s and t.
-    # It is essentially the chiral permutation that best most closesly defines
-    # the rotation between them.
-    matchings = {}
-    # Compute the matchings for all pairs of face-adjacent tets.
-    for pair in tet_mesh.mesh.adjacent_elements:
-        args = []
-        if -1 in pair:
-            continue # Boundary face
-        # Find the best permutation to characterize closeness.
-        for permutation in chiral_symmetries:
-            arg = tet_mesh.frames[pair[0]].uvw - tet_mesh.frames[pair[1]].uvw * permutation.T
-            args.append(np.linalg.norm(arg))
-        # Store the matching
-        matchings[tuple(pair)] = chiral_symmetries[np.argmin(args)]
-
     # Classify the internal edges by type, and find the singular graph.
     # The edge type is determined via concatenation of the matchings around 
     # the edge's tetrahedral one-ring.
@@ -46,11 +30,11 @@ def singular_graph(tet_mesh):
             matching = []
             pair = (one_ring[i], one_ring[(i + 1) % len(one_ring)])
             # If pair order is reversed, invert/transpose rotation matrix.
-            if pair not in matchings:
+            if pair not in tet_mesh.matchings:
                 pair = pair[::-1] # reverse
-                matching = matchings[pair].T
+                matching = tet_mesh.matchings[pair].T
             else:
-                matching = matchings[pair]
+                matching = tet_mesh.matchings[pair]
             # Concatenate transforms
             edge_type = np.dot(edge_type, matching)
 
