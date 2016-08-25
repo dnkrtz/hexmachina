@@ -30,7 +30,7 @@ class TetrahedralMesh(object):
         mesh_info = meshpy.tet.MeshInfo()
         # Define MeshPy options.
         # @TODO Investigate why the -Y switch messes up surface extraction (facets?)
-        opt = meshpy.tet.Options(switches='pqnn', facesout=True, edgesout=True)
+        opt = meshpy.tet.Options(switches='pqnn', facesout=True, edgesout=True, voroout=True)
         # Generate tetrahedral mesh.
         mesh_info.set_points(tri_mesh.vertices)
         faces = [list(map(lambda x: int(x), i)) for i in tri_mesh.faces]
@@ -41,6 +41,7 @@ class TetrahedralMesh(object):
         self.one_rings = {}
         self.frames = []
         self.matchings = {}
+        self.edge_types = np.zeros(len(mesh_info.edges))
 
     # Compute the one ring of tets surrounding each internal edge.
     def compute_onerings(self, surf_mesh):

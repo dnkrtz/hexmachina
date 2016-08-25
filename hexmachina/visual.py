@@ -5,7 +5,7 @@
     Created: 09/07/2016
     Python Version: 3.5
     ========================
-    This module contains some visualization tools.
+    This module contains some matplotlib plotting functions.
 '''
 
 import numpy as np

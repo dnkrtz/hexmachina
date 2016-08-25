@@ -11,6 +11,9 @@
 import numpy as np
 from pyvtk import *
 
+def print_ok():
+    print('\033[92m OK. \033[0m')
+
 # Normalize a vector to unit length.
 def normalize(vector):
     return vector / np.linalg.norm(vector)
@@ -20,6 +23,12 @@ def tet_centroid(tet_mesh, ti):
              np.array(tet_mesh.points[tet_mesh.elements[ti][1]]) +
              np.array(tet_mesh.points[tet_mesh.elements[ti][2]]) + 
              np.array(tet_mesh.points[tet_mesh.elements[ti][3]]) ) / 4
+
+# Shape and edge are indices into mesh.points.
+def is_on_edge(shape, edge):
+    if ei[0] in shape and ei[1] in shape:
+        return True
+    return False
 
 # Write tetrahedral mesh as .vtk file for paraview.
 def vtk_tetmesh(mesh, filename):
