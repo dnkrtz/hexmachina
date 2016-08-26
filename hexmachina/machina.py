@@ -14,6 +14,7 @@ import itertools
 import meshpy.tet
 import numpy as np
 from scipy import spatial, optimize
+import time
 
 from optimization import *
 from transforms import *
@@ -47,42 +48,23 @@ class HexMachina(object):
         self.edge_types = np.zeros(len(mesh_info.edges))
 
     def compute_dual(self):
-
-        # Store the primal info in sets for quick lookups.
-        primal_edges = []
-        primal_faces = []
-        for ei, edge in enumerate(self.tet_mesh.edges):
-            primal_edges.append(set(edge))
-        for fi, face in enumerate(self.tet_mesh.faces):
-            primal_faces.append(set(face))
-
         # The dual edges represent faces of the primal.
         # Specifically, the dual edge connects the orthocenters
         # of two adjacent tets, so naturally, it contains useful
         # face adjacency information.
-        self.dual_edges = [set()] * len(primal_faces)
-        for ti, tet in enumerate(self.tet_mesh.elements):
-            neighbors = self.tet_mesh.neighbors[ti]
-            for ni, neigh_ti in enumerate(neighbors):
-                # Create the current face.
-                face = set()
-                for i, vi in enumerate(tet):
-                    if i != ni : face.add(vi)
-                # Find its index.
-                fi = primal_faces.index(face)
-                # Add it as a dual edge.
-                self.dual_edges[fi] = set([ti, neigh_ti])
+        self.dual_edges = []
+        for fi, face in enumerate(self.tet_mesh.faces):
+            self.dual_edges.append(set(self.tet_mesh.adjacent_elements[fi]))
         
         # The dual faces represent edges of the primal. Essentially,
-        # ot provides the one-ring of tet indices around the edge.
-        for ei, edge in enumerate(primal_edges):
+        # it provides the one-ring of tet indices around the edge.
+        for ei, edge in enumerate(self.tet_mesh.edges):
             # Make sure this is an internal edge, skip if it isn't.
             if all(vi in self.surf_mesh.vertex_map for vi in edge):
                 continue
             # If it is, construct its one ring.
-            one_ring = []
+            one_ring = [ self.tet_mesh.edge_adjacent_elements[ei] ]
             finished = False
-            one_ring.append(self.tet_mesh.edge_adjacent_elements[ei])
             # Walk around the edge until we've closed the one ring.
             while not finished:
                 finished = True
@@ -156,7 +138,7 @@ class HexMachina(object):
         # Use scipy's L-BFGS to minimize the energy function.
         opti = optimize.minimize(global_energy, euler_angles, args=(self,),
                                  method='L-BFGS-B', jac = True,
-                                 options={'ftol': 1e-4, 'maxiter': 50, 'disp': True}).x
+                                 options={'ftol': 1e-2, 'maxiter': 50, 'disp': True}).x
 
         # Once optimization is complete, save results
         for fi, frame in enumerate(self.frames):

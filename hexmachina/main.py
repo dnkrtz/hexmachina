@@ -15,9 +15,9 @@ import numpy as np
 import trimesh
 
 from machina import HexMachina
-from framefield import *
-from utils import *
 from optimization import *
+from parametrization import *
+from utils import *
 
 print('Reading triangle mesh...', end=" ")
 sys.stdout.flush()
@@ -27,7 +27,7 @@ say_ok()
 # Instantiate tetrahedral mesh
 print('Generating tetrahedral mesh...', end=" ")
 sys.stdout.flush()
-machina = HexMachina(tri_mesh, max_vol = 5)
+machina = HexMachina(tri_mesh, max_vol = 2)
 # Output tetrahedral mesh
 vtk_tetmesh(machina.tet_mesh, 'tet_mesh')
 say_ok()
@@ -57,9 +57,9 @@ sys.stdout.flush()
 machina.init_framefield()
 say_ok()
 
-# Optimize 3D frame field by L-BFGS minimization.
-print('Optimizing framefield...')
-machina.optimize_framefield()
+# # Optimize 3D frame field by L-BFGS minimization.
+# print('Optimizing framefield...')
+# machina.optimize_framefield()
 
 # Output frame field to .vtk file.
 vtk_framefield(machina.frames, 'field')
