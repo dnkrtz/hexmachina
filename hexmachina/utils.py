@@ -11,18 +11,33 @@
 import numpy as np
 from pyvtk import *
 
-def print_ok():
+# Prints a green OK.
+def say_ok():
     print('\033[92m OK. \033[0m')
 
 # Normalize a vector to unit length.
 def normalize(vector):
     return vector / np.linalg.norm(vector)
 
+# Compute the centroid of tetrahedron ti.
 def tet_centroid(tet_mesh, ti):
     return ( np.array(tet_mesh.points[tet_mesh.elements[ti][0]]) + 
              np.array(tet_mesh.points[tet_mesh.elements[ti][1]]) +
              np.array(tet_mesh.points[tet_mesh.elements[ti][2]]) + 
              np.array(tet_mesh.points[tet_mesh.elements[ti][3]]) ) / 4
+
+# Compute the volume of tetrahedron ti.
+def tet_volume(tet_mesh, ti):
+    a = np.array(tet_mesh.points[tet_mesh.elements[ti][0]])
+    b = np.array(tet_mesh.points[tet_mesh.elements[ti][1]])
+    c = np.array(tet_mesh.points[tet_mesh.elements[ti][2]])
+    d = np.array(tet_mesh.points[tet_mesh.elements[ti][3]])
+    vol = np.matrix([ a[0], a[1], a[2] ],
+                    [ b[0], b[1], b[2] ],
+                    [ c[0], c[1], c[2] ],
+                    [ d[0], d[1], d[2] ],
+                    [ 1, 1, 1, 1 ])
+    return np.linalg.det(vol)
 
 # Shape and edge are indices into mesh.points.
 def is_on_edge(shape, edge):

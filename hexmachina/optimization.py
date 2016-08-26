@@ -1,7 +1,19 @@
+'''
+    File: optimization.py
+    License: MIT
+    Author: Aidan Kurtz
+    Created: 20/08/2016
+    Python Version: 3.5
+    ========================
+    This module involves the 3D framefield optimization based
+    on an energy function and its gradient. The efficient
+    L-BFGS optimization method is used, with multiprocessing.
+'''
 
 import itertools
 from scipy import optimize
 import multiprocessing as mp
+import random
 
 from transforms import *
 
@@ -35,6 +47,7 @@ def pair_energy_diff(F_s, F_t, dF_s, dF_t):
     return dE_st
 
 # Quantify smoothness around an internal tetrahedral edge.
+# Returns the result and its sparse gradient.
 def edge_energy(args):
     ei, one_rings, frames, euler_angles = args
 
@@ -43,6 +56,7 @@ def edge_energy(args):
 
     if ei not in one_rings:
         return E, dE # Not internal.
+    
     # All combinations of s, t around the edges' one ring.
     for combo in itertools.combinations(one_rings[ei], 2):
         F = []
@@ -50,13 +64,13 @@ def edge_energy(args):
         # Loop frame index (fi) combos.
         for fi in [combo[0], combo[1]]:
             frame = frames[fi]
-            # The frame is represented is computed based on euler angles.
+            # The frame is represented by its euler angles.
             R = convert_to_R(frame, euler_angles[3*fi], 
                 euler_angles[3*fi + 1], euler_angles[3*fi + 2])
             F.append(R)
             # The partial derivative wrt each angle.
             dR = convert_to_dR(frame, euler_angles[3*fi], 
-                 euler_angles[3*fi + 1], euler_angles[3*fi + 2])
+                    euler_angles[3*fi + 1], euler_angles[3*fi + 2])
             dF.append(dR)
         
         # Add pair energy to the one-ring energy.
@@ -70,18 +84,19 @@ def edge_energy(args):
 
 # Returns the energy function and its gradient.
 # Minimizing via L-BFGS smoothens the framefield.
-def global_energy(euler_angles, tet_mesh):
+def global_energy(euler_angles, machina):
 
     # Edge energies and their gradient.
     E = 0
-    dE = [ [] for _ in range(len(tet_mesh.mesh.edges)) ]
-
-    one_rings = tet_mesh.one_rings
-    frames = tet_mesh.frames
+    dE = [ [] for _ in range(len(machina.tet_mesh.edges)) ]
+    
+    # Relevant data
+    one_rings = machina.dual_faces
+    frames = machina.frames
 
     # Multiprocessing setup and execution.
     def parameters():
-        for ei in range(len(tet_mesh.mesh.edges)):
+        for ei in range(len(machina.tet_mesh.edges)):
             yield (ei, one_rings, frames, euler_angles)
     pool = mp.Pool()
     results = pool.map(edge_energy, parameters())

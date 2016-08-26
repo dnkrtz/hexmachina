@@ -25,4 +25,4 @@ To set up the dependencies, run:
 
 Once that's done, fire away with:
 
-    python hexmachina.py
+    python main.py
