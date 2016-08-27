@@ -22,7 +22,7 @@ from utils import *
 # the rotation between them.
 def compute_matchings(machina):
     # Loop through all pairs of face-adjacent tets.
-    for pair in machina.tet_mesh.adjacent_elements:
+    for fi, pair in enumerate(machina.tet_mesh.adjacent_elements):
         args = []
         if -1 in pair:
             continue # Boundary face
@@ -30,13 +30,13 @@ def compute_matchings(machina):
         for permutation in chiral_symmetries:
             arg = machina.frames[pair[0]].uvw - machina.frames[pair[1]].uvw * permutation.T
             args.append(np.linalg.norm(arg))
-        # Store the matching
-        machina.matchings[tuple(pair)] = np.argmin(args)
+        # Store the matching, as an index into chiral symmetry group.
+        machina.matchings[fi] = np.argmin(args)
 
 # Greedy matching adjustment (section 3.3.1)
 def matching_adjustment(machina):
     # Recompute the matchings.
-    machina.compute_matchings()
+    machina.compute_matchings(machina)
 
     # Create edge dictionary.
     edges = {}
@@ -92,21 +92,22 @@ def compute_edge_types(machina, edge_index):
     # the edge's tetrahedral one-ring.
     for ei in edge_index:
         try:
-            one_ring = machina.dual_faces[ei]
+            one_ring = machina.one_rings[ei]
         except KeyError:
-            return # Not an internal edge.
+            continue # Not an internal edge.
         
         # Concatenate the matchings around the edge to find its type.
         edge_type = np.identity(3)
-        for i in range(len(one_ring)):
+        for fi in one_ring['faces']:
             matching = []
-            pair = (one_ring[i], one_ring[(i + 1) % len(one_ring)])
+            # Recall that in the one-ring, if 'fi' is negative, it is
+            # a 't-s' pair, as opposed to a 's-t' pair.
             # If pair order is reversed, invert/transpose rotation matrix.
-            if pair in machina.matchings:
-                matching = chiral_symmetries[machina.matchings[pair]]
+            # Use copysign to distinguish +0 from -0.
+            if np.copysign(1, fi) > 0:
+                matching = chiral_symmetries[machina.matchings[fi]]
             else:
-                pair = pair[::-1] # reverse
-                matching = chiral_symmetries[machina.matchings[pair]].T
+                matching = chiral_symmetries[machina.matchings[-fi]].T
             # Concatenate transforms
             edge_type = np.dot(edge_type, matching)
         
@@ -124,10 +125,9 @@ def compute_edge_types(machina, edge_index):
         
 
 def singular_graph(machina):
-    # Compute matchings if it hasn't been done yet.
+    # Compute matchings.
     compute_matchings(machina)
-    for i in range(len(machina.tet_mesh.edges)):
-        compute_edge_types(machina, [i,])
+    compute_edge_types(machina, range(len(machina.tet_mesh.edges)))
    
     # Store them in lists for output.
     singular_edges = []
@@ -148,31 +148,57 @@ def singular_graph(machina):
 
     return singular_edges, improper_edges
 
-def parametrize_volume(tet_mesh, h):
+def parametrize_volume(machina, h):
+
+    # Translational gaps (parallel to tet_mesh.faces)
+    gaps = []
+    # Minimum spanning tree of tetrahedral mesh (subset of dual edges).
+    mst_edges = []
+    visited_tets = set()
+    # Span until all tets have been visited.
+    ti = 0
+    while len(visited_tets) != len(machina.tet_mesh.elements):
+        for neigh_ti in machina.tet_mesh.neighbors[ti]:
+            if neigh_ti in visited_tets:
+                continue
+            mst_edges.add(machina.dual_edges[frozenset([ti, neigh_ti])])
+            visited_tets.add(ti)
+
+    cons = ({'type': 'eq', 'fun': lambda x:  x[0] - 2 * x[1] + 2})
+
+    
+    
+    
+
+
+
+
+
+
 
     # Each vertex may have multiple initial map values, depending
     # on the number of tets it's a part of. We narrow down later.
-    f_map = [ [] for _ in range(len(tet_mesh.points)) ]
-
-    for tet_pair, matching in tet_mesh.matchings.items():
-        for vi in tet_pair[0]:
-            f_map[vi].append(tet_mesh.frames[tet_pair[0]])
-        for vi in tet_pair[1]:
-            f_map[vi].append(tet_mesh.frames[tet_pair[1]])
+    f_map = [ [] for _ in range(len(machina.points)) ]
+    f_map_grad = [ [] for _ in range(len(machina.points)) ]
 
     # Compute the framefield gradient.
+    for tet_pair, matching in machina.matchings.items():
+        for vi in tet_pair[0]:
+            f_map[vi].append(machina.frames[tet_pair[0]])
+            f_map_grad[vi].append(np.diag(machina.frames[tet_pair[0]]))
+
+        for vi in tet_pair[1]:
+            f_map[vi].append(machina.frames[tet_pair[1]])
     
-
-
     for vi, vertex_map in enumarate(f_map):
         ti = 0 # what?
-        score = tet_volume(tet_mesh, ti)
+        score = tet_volume(machina, ti)
         for f in vertex_map:
-            vol = tet_volume(tet_mesh, ti)
-            D = np.linalg.norm(h * frames_grad[:,0] - tet_mesh.frames[ti].uvw[:,0])**2 + \
-                np.linalg.norm(h * frames_grad[:,1] - tet_mesh.frames[ti].uvw[:,1])**2 + \
-                np.linalg.norm(h * frames_grad[:,2] - tet_mesh.frames[ti].uvw[:,2])**2
-    
+            vol = tet_volume(machina, ti)
+            D = np.linalg.norm(h * frames_grad[:,0] - machina.frames[ti].uvw[:,0])**2 + \
+                np.linalg.norm(h * frames_grad[:,1] - machina.frames[ti].uvw[:,1])**2 + \
+                np.linalg.norm(h * frames_grad[:,2] - machina.frames[ti].uvw[:,2])**2
+            
 
 
 

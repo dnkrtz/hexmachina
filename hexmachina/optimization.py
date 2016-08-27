@@ -8,6 +8,7 @@
     This module involves the 3D framefield optimization based
     on an energy function and its gradient. The efficient
     L-BFGS optimization method is used, with multiprocessing.
+    Very slow nonetheless.
 '''
 
 import itertools
@@ -58,7 +59,7 @@ def edge_energy(args):
         return E, dE # Not internal.
     
     # All combinations of s, t around the edges' one ring.
-    for combo in itertools.combinations(one_rings[ei], 2):
+    for combo in itertools.combinations(one_rings[ei]['tets'], 2):
         F = []
         dF = []
         # Loop frame index (fi) combos.
@@ -91,7 +92,7 @@ def global_energy(euler_angles, machina):
     dE = [ [] for _ in range(len(machina.tet_mesh.edges)) ]
     
     # Relevant data
-    one_rings = machina.dual_faces
+    one_rings = machina.one_rings
     frames = machina.frames
 
     # Multiprocessing setup and execution.

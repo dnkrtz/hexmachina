@@ -27,7 +27,7 @@ say_ok()
 # Instantiate tetrahedral mesh
 print('Generating tetrahedral mesh...', end=" ")
 sys.stdout.flush()
-machina = HexMachina(tri_mesh, max_vol = 2)
+machina = HexMachina(tri_mesh, max_vol = 5)
 # Output tetrahedral mesh
 vtk_tetmesh(machina.tet_mesh, 'tet_mesh')
 say_ok()
@@ -64,11 +64,11 @@ say_ok()
 # Output frame field to .vtk file.
 vtk_framefield(machina.frames, 'field')
 
-# # Compute the pair matchings.
-# print("Computing all pair matchings...", end=" ")
-# sys.stdout.flush()
-# compute_matchings(tet_mesh)
-# print_ok()
+# Compute the pair matchings.
+print("Computing all pair matchings...", end=" ")
+sys.stdout.flush()
+compute_matchings(machina)
+say_ok()
 
 # Determine the singular edges of the framefield.      
 print("Computing singular graph...", end=" ")

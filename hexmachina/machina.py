@@ -42,22 +42,21 @@ class HexMachina(object):
         self.tet_mesh = mesh_info
         self.surf_mesh = SurfaceMesh(self.tet_mesh)
         self.dual_edges = [] # aka face adjacency
-        self.dual_faces = {} # aka edge onerings.
+        self.one_rings = {} # aka edge onerings.
         self.frames = []
-        self.matchings = {}
+        self.matchings = {} # parallel to tet_mesh.faces
         self.edge_types = np.zeros(len(mesh_info.edges))
 
     def compute_dual(self):
-        # The dual edges represent faces of the primal.
-        # Specifically, the dual edge connects the orthocenters
-        # of two adjacent tets, so naturally, it contains useful
-        # face adjacency information.
-        self.dual_edges = []
+        # Dual edges as a dictionary where they key is a set of tets,
+        # and the value is the index of the face they share.
+        self.dual_edges = {}
         for fi, face in enumerate(self.tet_mesh.faces):
-            self.dual_edges.append(set(self.tet_mesh.adjacent_elements[fi]))
+            edge_key = frozenset(self.tet_mesh.adjacent_elements[fi])
+            self.dual_edges[edge_key] = fi
         
-        # The dual faces represent edges of the primal. Essentially,
-        # it provides the one-ring of tet indices around the edge.
+        # The dual faces represent edges of the primal. The edges of
+        # this face is called the one-ring of tets around the edge.
         for ei, edge in enumerate(self.tet_mesh.edges):
             # Make sure this is an internal edge, skip if it isn't.
             if all(vi in self.surf_mesh.vertex_map for vi in edge):
@@ -79,8 +78,23 @@ class HexMachina(object):
                         one_ring.append(neigh_ti)
                         finished = False
                         break
+            
+            # The one-ring can also be an ordered list of face indices
+            # between each pair of adjacent tets 's' and 't'.
+            # If the pair is in a different order than the adjacency info,
+            # store fi as a negative value.
+            face_sequence = []
+            for i in range(len(one_ring)):
+                st_key = frozenset([one_ring[i], one_ring[(i + 1) % len(one_ring)]])
+                fi = self.dual_edges[st_key]
+                
+                if self.tet_mesh.adjacent_elements[fi][0] == one_ring[i]:
+                    face_sequence.append(fi)
+                else:
+                    face_sequence.append(-fi)
+
             # Store it in our ring dictionary (don't tell golem).
-            self.dual_faces[ei] = one_ring
+            self.one_rings[ei] =  { 'tets' : one_ring, 'faces' : face_sequence }
 
     # Initialize the frame field based on surface curvature and normals.
     def init_framefield(self):
