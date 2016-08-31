@@ -15,6 +15,7 @@ import numpy as np
 from visual import *
 from machina import *
 from utils import *
+from transforms import *
 
 # Compute the matchings for all pairs of face-adjacent tets.
 # We use matchings to characterize closeness between two frames s and t.
@@ -148,58 +149,141 @@ def singular_graph(machina):
 
     return singular_edges, improper_edges
 
-def parametrize_volume(machina, h):
+def var_index(ti, vi, ci):
+    return ( 4 * ti + 3 * vi + ci )
 
-    # Translational gaps (parallel to tet_mesh.faces)
-    gaps = []
-    # Minimum spanning tree of tetrahedral mesh (subset of dual edges).
-    mst_edges = []
-    visited_tets = set()
+def constraint_matrix(machina, mst_edges):
+    
+    ne = len(machina.tet_mesh.elements)
+    constraints = np.zeros( (12 * ne, 12*ne) )
+    ccount = 0
+
+    for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
+        s, t = adj_ti[0], adj_ti[1]
+        # Boundary face.
+        if -1 in [s, t]:
+            x = s if s != -1 else t # tet index
+            vi_t = [] # local tet vertex indices of face.
+            for vi in machina.tet_mesh.faces[fi]:
+                vi_t.append(machina.tet_mesh.elements[x].index(vi))
+            # Constrain surface normal.
+            for i in [1, 2]:
+                constraints[ccount, var_index(t, vi_t[0], 2)] = 1
+                constraints[ccount, var_index(t, vi_t[i], 2)] = -1
+                ccount += 1
+            
+        # Internal face with two tets in common.
+        else:
+            match = chiral_symmetries[machina.matchings[fi]]
+            # Get local tet vertex indices of shared face vertices.
+            vi_s, vi_t = [], []
+            for vi in machina.tet_mesh.faces[fi]:
+                vi_s.append(machina.tet_mesh.elements[s].index(vi))
+                vi_t.append(machina.tet_mesh.elements[t].index(vi))
+            # If gap is 0 (minimum spanning tree).
+            if fi in mst_edges:
+                for i in [0,1,2]: # points pqr
+                    for j in [0,1,2]: # coords uvw
+                        constraints[ccount, var_index(t, vi_t[i], j)] = - 1
+                        for k in [0,1,2]:
+                            constraints[ccount, var_index(s, vi_s[i], k)] = match[j, k]
+                        ccount += 1
+            # If gap isn't 0, enforce that it be constant.
+            else:
+                for i in [1,2]: # points qr
+                    for j in [0,1,2]: # coords uvw
+                        constraints[ccount, var_index(t, vi_t[0], j)] = 1
+                        constraints[ccount, var_index(t, vi_t[i], j)] = - 1
+                        for k in [0,1,2]: # permutation
+                            constraints[ccount, var_index(s, vi_s[0], k)] = - match[j, k]
+                            constraints[ccount, var_index(s, vi_s[i], k)] = match[j, k]
+                        ccount += 1
+            
+    return constraints
+
+
+def parametrize_volume(machina):
+
+    # Each vertex has multiple values, depending
+    # on the number of tets it's a part of.
+    f_map = np.zeros((len(machina.tet_mesh.elements), 4, 3))
+
+    # Minimum spanning tree of dual mesh as list of face indices.
     # Span until all tets have been visited.
     ti = 0
-    while len(visited_tets) != len(machina.tet_mesh.elements):
+    mst_edges = set()
+    visited_tets = set()
+    while ti < len(machina.tet_mesh.elements):
         for neigh_ti in machina.tet_mesh.neighbors[ti]:
-            if neigh_ti in visited_tets:
+            if neigh_ti in visited_tets or neigh_ti == -1:
                 continue
-            mst_edges.add(machina.dual_edges[frozenset([ti, neigh_ti])])
+            # Get face index from s-t tet pair.
+            fi = machina.dual_edges[frozenset([ti, neigh_ti])]
+            mst_edges.add(fi)
             visited_tets.add(ti)
+        ti += 1
 
-    cons = ({'type': 'eq', 'fun': lambda x:  x[0] - 2 * x[1] + 2})
+    # Remove translational freedom with constraints.
+    cons = constraint_matrix(machina, mst_edges)
+    print(cons)
 
+    # Use lagrangian multipliers to augment the system.
+    ne = len(machina.tet_mesh.elements)
+    degree = np.zeros( (ne, ne) )
+    adjacency = np.zeros( (ne, ne) )
+    for ti, tet in enumerate(machina.tet_mesh.elements):
+        for ni, neigh_ti in enumerate(machina.tet_mesh.neighbors[ti]):
+            adjacency[ti, neigh_ti] = 1
+            adjacency[neigh_ti, ti] = 1
+        degree[ti, ti] = ni
+
+    # Laplacian matrix.
+    laplacian = degree - adjacency
+
+    # scipy.optimize.minimize(
+    #     fun = parametrization_energy,
+    #     x0 = f_map,
+    #     args = machina,
+    #     method = 'CG',
+    #     options = {
+    #         'disp': True,
+    #         ''
+    #     }
+    # )
     
-    
-    
 
+def parametrization_energy(f_map, machina):
 
+    result = 0
 
+    # Build the summation.
+    for ti, tet in enumerate(machina.tet_mesh.elements):
+        volume = tet_volume(machina, ti)
+        # On each tetrahedron, we have 4 values of (u,v,w)
+        pts = [ machina.tet_mesh.points[tet[i]] for i in range(4) ]
+        u = [ f_map[ti, i, 0] for i in range(4) ]
+        v = [ f_map[ti, i, 1] for i in range(4) ]
+        w = [ f_map[ti, i, 2] for i in range(4) ]
+        # Interpolating the finite difference gives us the gradient
+        # with respect to euclidean coords (x,y,z).
+        du = (1/3)*((u[0] - u[1]) / (pts[0] - pts[1]) + \
+                    (u[0] - u[2]) / (pts[0] - pts[2]) + \
+                    (u[0] - u[3]) / (pts[0] - pts[3]))
+        dv = (1/3)*((v[0] - v[1]) / (pts[0] - pts[1]) + \
+                    (v[0] - v[2]) / (pts[0] - pts[2]) + \
+                    (v[0] - v[3]) / (pts[0] - pts[3]))
+        dw = (1/3)*((w[0] - w[1]) / (pts[0] - pts[1]) + \
+                    (w[0] - w[2]) / (pts[0] - pts[2]) + \
+                    (w[0] - w[3]) / (pts[0] - pts[3]))
+        # Compute D for the tetrahedron.
+        D = np.linalg.norm(h * du - machina.frames[ti].uvw[:,0])**2 + \
+            np.linalg.norm(h * dv - machina.frames[ti].uvw[:,1])**2 + \
+            np.linalg.norm(h * dw - machina.frames[ti].uvw[:,2])**2
 
+        result += volume * D
 
-
-
-    # Each vertex may have multiple initial map values, depending
-    # on the number of tets it's a part of. We narrow down later.
-    f_map = [ [] for _ in range(len(machina.points)) ]
-    f_map_grad = [ [] for _ in range(len(machina.points)) ]
-
-    # Compute the framefield gradient.
-    for tet_pair, matching in machina.matchings.items():
-        for vi in tet_pair[0]:
-            f_map[vi].append(machina.frames[tet_pair[0]])
-            f_map_grad[vi].append(np.diag(machina.frames[tet_pair[0]]))
-
-        for vi in tet_pair[1]:
-            f_map[vi].append(machina.frames[tet_pair[1]])
-    
-    for vi, vertex_map in enumarate(f_map):
-        ti = 0 # what?
-        score = tet_volume(machina, ti)
-        for f in vertex_map:
-            vol = tet_volume(machina, ti)
-            D = np.linalg.norm(h * frames_grad[:,0] - machina.frames[ti].uvw[:,0])**2 + \
-                np.linalg.norm(h * frames_grad[:,1] - machina.frames[ti].uvw[:,1])**2 + \
-                np.linalg.norm(h * frames_grad[:,2] - machina.frames[ti].uvw[:,2])**2
-            
-
+    return result
+        
 
 
 
