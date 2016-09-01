@@ -70,11 +70,11 @@ sys.stdout.flush()
 compute_matchings(machina)
 say_ok()
 
-# Determine the singular edges of the framefield.      
-print("Computing singular graph...", end=" ")
-sys.stdout.flush()
-singular_graph(machina)
-say_ok()
+# # Determine the singular edges of the framefield.      
+# print("Computing singular graph...", end=" ")
+# sys.stdout.flush()
+# singular_graph(machina)
+# say_ok()
 
 # print("Parametrizing volume...", end=" ")
 # sys.stdout.flush()

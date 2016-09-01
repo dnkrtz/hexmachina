@@ -56,7 +56,7 @@ class HexMachina(object):
             self.dual_edges[edge_key] = fi
         
         # The dual faces represent edges of the primal. The edges of
-        # this face is called the one-ring of tets around the edge.
+        # this face are called the one-ring of tets around the edge.
         for ei, edge in enumerate(self.tet_mesh.edges):
             # Make sure this is an internal edge, skip if it isn't.
             if all(vi in self.surf_mesh.vertex_map for vi in edge):

@@ -11,6 +11,7 @@
 import bisect
 import math
 import numpy as np
+import scipy.sparse
 
 from visual import *
 from machina import *
@@ -155,7 +156,7 @@ def var_index(ti, vi, ci):
 def constraint_matrix(machina, mst_edges):
     
     ne = len(machina.tet_mesh.elements)
-    constraints = np.zeros( (12 * ne, 12*ne) )
+    constraints = scipy.sparse.lil_matrix( (9 * 12 * ne, 12*ne) )
     ccount = 0
 
     for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
@@ -201,12 +202,15 @@ def constraint_matrix(machina, mst_edges):
             
     return constraints
 
+def iter_call(xk):
+    print(xk)
 
 def parametrize_volume(machina):
 
     # Each vertex has multiple values, depending
     # on the number of tets it's a part of.
-    f_map = np.zeros((len(machina.tet_mesh.elements), 4, 3))
+    ne = len(machina.tet_mesh.elements)
+    f_map = np.zeros(12 * ne)
 
     # Minimum spanning tree of dual mesh as list of face indices.
     # Span until all tets have been visited.
@@ -225,20 +229,39 @@ def parametrize_volume(machina):
 
     # Remove translational freedom with constraints.
     cons = constraint_matrix(machina, mst_edges)
-    print(cons)
+    # lu = scipy.sparse.linalg.splu(cons.tocsr())
+    # cons = lu.U # Reduced system
 
     # Use lagrangian multipliers to augment the system.
-    ne = len(machina.tet_mesh.elements)
-    degree = np.zeros( (ne, ne) )
-    adjacency = np.zeros( (ne, ne) )
-    for ti, tet in enumerate(machina.tet_mesh.elements):
-        for ni, neigh_ti in enumerate(machina.tet_mesh.neighbors[ti]):
-            adjacency[ti, neigh_ti] = 1
-            adjacency[neigh_ti, ti] = 1
-        degree[ti, ti] = ni
+    degree = 3 * scipy.sparse.eye(12*ne)
+    adj_block = [[0,0,0, 1,0,0, 1,0,0, 1,0,0],
+                 [0,0,0, 0,1,0, 0,1,0, 0,1,0],
+                 [0,0,0, 0,0,1, 0,0,1, 0,0,1],
+                 [1,0,0, 0,0,0, 1,0,0, 1,0,0],
+                 [0,1,0, 0,0,0, 0,1,0, 0,1,0],
+                 [0,0,1, 0,0,0, 0,0,1, 0,0,1],
+                 [1,0,0, 1,0,0, 0,0,0, 1,0,0],
+                 [0,1,0, 0,1,0, 0,0,0, 0,1,0],
+                 [0,0,1, 0,0,1, 0,0,0, 0,0,1],
+                 [1,0,0, 1,0,0, 1,0,0, 0,0,0],
+                 [0,1,0, 0,1,0, 0,1,0, 0,0,0],
+                 [0,0,1, 0,0,1, 0,0,1, 0,0,0],]
+    adjacency = scipy.sparse.block_diag([adj_block for _ in range(ne)])
 
     # Laplacian matrix.
     laplacian = degree - adjacency
+
+    A = scipy.sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]))
+
+    # Discrete frame divergence.
+    b = np.zeros(12*ne + n_cons)
+    x0 = np.zeros(12*ne + n_cons)
+    for ti in range(ne):
+        frame = machina.frames[ti]
+        b[12*ti:12*(ti+1)] = frame.uvw[0,0] + frame.uvw[1,1] + frame.uvw[2,2]
+
+    x = scipy.sparse.linalg.cg(A, b, M = A.transpose(copy=True))
+    print(x)
 
     # scipy.optimize.minimize(
     #     fun = parametrization_energy,

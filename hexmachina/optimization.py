@@ -12,7 +12,7 @@
 '''
 
 import itertools
-from scipy import optimize
+from scipy import sparse
 import multiprocessing as mp
 import random
 
@@ -53,7 +53,7 @@ def edge_energy(args):
     ei, one_rings, frames, euler_angles = args
 
     E = 0
-    dE = np.zeros( 3 * len(frames) )
+    dE = sparse.lil_matrix( (1, 3*len(frames)) )
 
     if ei not in one_rings:
         return E, dE # Not internal.
@@ -78,8 +78,8 @@ def edge_energy(args):
         E += pair_energy(F[0], F[1])
         # Add pair energy gradients.
         for i in range(3):
-            dE[3 * combo[0] + i] += pair_energy_diff(F[0], F[1], dF[0][i], np.zeros((3,3)))
-            dE[3 * combo[1] + i] += pair_energy_diff(F[0], F[1], np.zeros((3,3)), dF[1][i])
+            dE[0, 3 * combo[0] + i] += pair_energy_diff(F[0], F[1], dF[0][i], np.zeros((3,3)))
+            dE[0, 3 * combo[1] + i] += pair_energy_diff(F[0], F[1], np.zeros((3,3)), dF[1][i])
 
     return E, dE
 
@@ -87,10 +87,6 @@ def edge_energy(args):
 # Minimizing via L-BFGS smoothens the framefield.
 def global_energy(euler_angles, machina):
 
-    # Edge energies and their gradient.
-    E = 0
-    dE = [ [] for _ in range(len(machina.tet_mesh.edges)) ]
-    
     # Relevant data
     one_rings = machina.one_rings
     frames = machina.frames
@@ -101,8 +97,9 @@ def global_energy(euler_angles, machina):
             yield (ei, one_rings, frames, euler_angles)
     pool = mp.Pool()
     results = pool.map(edge_energy, parameters())
+    # Edge energies and their gradient.
     E = np.sum([ res[0] for res in results ])
-    dE = np.sum([ res[1] for res in results ], axis=0)
+    dE = np.sum([ res[1] for res in results ]).toarray()[0,:]
     pool.close()
     pool.join()
     
