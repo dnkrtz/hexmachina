@@ -11,7 +11,7 @@
 import bisect
 import math
 import numpy as np
-import scipy.sparse
+from scipy import sparse
 
 from visual import *
 from machina import *
@@ -156,7 +156,7 @@ def var_index(ti, vi, ci):
 def constraint_matrix(machina, mst_edges):
     
     ne = len(machina.tet_mesh.elements)
-    constraints = scipy.sparse.lil_matrix( (9 * 12 * ne, 12*ne) )
+    C = sparse.lil_matrix( (3 * 12 * ne, 12*ne) )
     ccount = 0
 
     for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
@@ -169,8 +169,8 @@ def constraint_matrix(machina, mst_edges):
                 vi_t.append(machina.tet_mesh.elements[x].index(vi))
             # Constrain surface normal.
             for i in [1, 2]:
-                constraints[ccount, var_index(t, vi_t[0], 2)] = 1
-                constraints[ccount, var_index(t, vi_t[i], 2)] = -1
+                C[ccount, var_index(t, vi_t[0], 2)] = 1
+                C[ccount, var_index(t, vi_t[i], 2)] = -1
                 ccount += 1
             
         # Internal face with two tets in common.
@@ -185,25 +185,30 @@ def constraint_matrix(machina, mst_edges):
             if fi in mst_edges:
                 for i in [0,1,2]: # points pqr
                     for j in [0,1,2]: # coords uvw
-                        constraints[ccount, var_index(t, vi_t[i], j)] = - 1
+                        C[ccount, var_index(t, vi_t[i], j)] = - 1
                         for k in [0,1,2]:
-                            constraints[ccount, var_index(s, vi_s[i], k)] = match[j, k]
+                            C[ccount, var_index(s, vi_s[i], k)] = match[j, k]
                         ccount += 1
             # If gap isn't 0, enforce that it be constant.
             else:
                 for i in [1,2]: # points qr
                     for j in [0,1,2]: # coords uvw
-                        constraints[ccount, var_index(t, vi_t[0], j)] = 1
-                        constraints[ccount, var_index(t, vi_t[i], j)] = - 1
+                        C[ccount, var_index(t, vi_t[0], j)] = 1
+                        C[ccount, var_index(t, vi_t[i], j)] = - 1
                         for k in [0,1,2]: # permutation
-                            constraints[ccount, var_index(s, vi_s[0], k)] = - match[j, k]
-                            constraints[ccount, var_index(s, vi_s[i], k)] = match[j, k]
+                            C[ccount, var_index(s, vi_s[0], k)] = - match[j, k]
+                            C[ccount, var_index(s, vi_s[i], k)] = match[j, k]
                         ccount += 1
-            
-    return constraints
+    
+    print(C.get_shape())
+    C = C.tocsr()
+    num_nonzeros = np.diff(C.indptr)
+    C = C[num_nonzeros != 0] # remove zero-rows
+    print(C.get_shape())
 
-def iter_call(xk):
-    print(xk)
+
+            
+    return C
 
 def parametrize_volume(machina):
 
@@ -229,11 +234,19 @@ def parametrize_volume(machina):
 
     # Remove translational freedom with constraints.
     cons = constraint_matrix(machina, mst_edges)
-    # lu = scipy.sparse.linalg.splu(cons.tocsr())
+    n_cons = cons.get_shape()[0]
+    # lu = sparse.linalg.splu(cons.tocsr())
     # cons = lu.U # Reduced system
 
+
+
+
     # Use lagrangian multipliers to augment the system.
-    degree = 3 * scipy.sparse.eye(12*ne)
+    degree = 3 * sparse.eye(12*ne)
+    # adj_block = [[0,1,1,1],
+    #              [1,0,1,1],
+    #              [1,1,0,1],
+    #              [1,1,1,0]]
     adj_block = [[0,0,0, 1,0,0, 1,0,0, 1,0,0],
                  [0,0,0, 0,1,0, 0,1,0, 0,1,0],
                  [0,0,0, 0,0,1, 0,0,1, 0,0,1],
@@ -245,22 +258,26 @@ def parametrize_volume(machina):
                  [0,0,1, 0,0,1, 0,0,0, 0,0,1],
                  [1,0,0, 1,0,0, 1,0,0, 0,0,0],
                  [0,1,0, 0,1,0, 0,1,0, 0,0,0],
-                 [0,0,1, 0,0,1, 0,0,1, 0,0,0],]
-    adjacency = scipy.sparse.block_diag([adj_block for _ in range(ne)])
+                 [0,0,1, 0,0,1, 0,0,1, 0,0,0]]
+    adjacency = sparse.block_diag([adj_block for _ in range(ne)])
 
     # Laplacian matrix.
     laplacian = degree - adjacency
 
-    A = scipy.sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]))
+    A = sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]))
 
     # Discrete frame divergence.
     b = np.zeros(12*ne + n_cons)
-    x0 = np.zeros(12*ne + n_cons)
     for ti in range(ne):
         frame = machina.frames[ti]
-        b[12*ti:12*(ti+1)] = frame.uvw[0,0] + frame.uvw[1,1] + frame.uvw[2,2]
+        div = [ np.sum(frame.uvw[:,0]), 
+                np.sum(frame.uvw[:,1]), 
+                np.sum(frame.uvw[:,2]) ]
+        b[12*ti:12*(ti+1)] = np.hstack([div for _ in range(4)])
 
-    x = scipy.sparse.linalg.cg(A, b, M = A.transpose(copy=True))
+    print("Beginning Conjugate Gradient...")
+
+    x = sparse.linalg.cg(A, b, tol = 10e-4, maxiter = 100000, M = A.transpose(copy=True))    
     print(x)
 
     # scipy.optimize.minimize(

@@ -56,7 +56,7 @@ def edge_energy(args):
     dE = sparse.lil_matrix( (1, 3*len(frames)) )
 
     if ei not in one_rings:
-        return E, dE # Not internal.
+        return E, dE.tocsr() # Not internal.
     
     # All combinations of s, t around the edges' one ring.
     for combo in itertools.combinations(one_rings[ei]['tets'], 2):
@@ -81,7 +81,7 @@ def edge_energy(args):
             dE[0, 3 * combo[0] + i] += pair_energy_diff(F[0], F[1], dF[0][i], np.zeros((3,3)))
             dE[0, 3 * combo[1] + i] += pair_energy_diff(F[0], F[1], np.zeros((3,3)), dF[1][i])
 
-    return E, dE
+    return E, dE.tocsr()
 
 # Returns the energy function and its gradient.
 # Minimizing via L-BFGS smoothens the framefield.
