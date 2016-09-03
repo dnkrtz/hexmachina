@@ -156,6 +156,7 @@ def var_index(ti, vi, ci):
 def constraint_matrix(machina, mst_edges):
     
     ne = len(machina.tet_mesh.elements)
+    L = sparse.lil_matrix( (4 * ne, 4 * ne) )
     C = sparse.lil_matrix( (3 * 12 * ne, 12*ne) )
     ccount = 0
 
@@ -163,10 +164,10 @@ def constraint_matrix(machina, mst_edges):
         s, t = adj_ti[0], adj_ti[1]
         # Boundary face.
         if -1 in [s, t]:
-            x = s if s != -1 else t # tet index
+            t = s if s != -1 else t # tet index
             vi_t = [] # local tet vertex indices of face.
             for vi in machina.tet_mesh.faces[fi]:
-                vi_t.append(machina.tet_mesh.elements[x].index(vi))
+                vi_t.append(machina.tet_mesh.elements[t].index(vi))
             # Constrain surface normal.
             for i in [1, 2]:
                 C[ccount, var_index(t, vi_t[0], 2)] = 1
@@ -181,6 +182,17 @@ def constraint_matrix(machina, mst_edges):
             for vi in machina.tet_mesh.faces[fi]:
                 vi_s.append(machina.tet_mesh.elements[s].index(vi))
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
+
+            # Store laplacian.
+            for p in [0,1,2]: # points pqr
+                i = 4 * t + vi_t[p]
+                j = 4 * s + vi_s[p]
+                L[i,i] -= 1
+                L[j,j] -= 1
+                L[i,j] += 1
+                L[j,i] += 1
+
+            # Next, apply constraints.
             # If gap is 0 (minimum spanning tree).
             if fi in mst_edges:
                 for i in [0,1,2]: # points pqr
@@ -200,15 +212,17 @@ def constraint_matrix(machina, mst_edges):
                             C[ccount, var_index(s, vi_s[i], k)] = match[j, k]
                         ccount += 1
     
-    print(C.get_shape())
     C = C.tocsr()
     num_nonzeros = np.diff(C.indptr)
     C = C[num_nonzeros != 0] # remove zero-rows
-    print(C.get_shape())
 
+    # Expand the laplacian for uvw format.
+    L = sparse.kron(L, sparse.eye(3))
 
-            
-    return C
+    return L, C
+
+def icall(xk):
+    print(xk)
 
 def parametrize_volume(machina):
 
@@ -233,51 +247,23 @@ def parametrize_volume(machina):
         ti += 1
 
     # Remove translational freedom with constraints.
-    cons = constraint_matrix(machina, mst_edges)
+    laplacian, cons = constraint_matrix(machina, mst_edges)
     n_cons = cons.get_shape()[0]
-    # lu = sparse.linalg.splu(cons.tocsr())
-    # cons = lu.U # Reduced system
 
-
-
-
-    # Use lagrangian multipliers to augment the system.
-    degree = 3 * sparse.eye(12*ne)
-    # adj_block = [[0,1,1,1],
-    #              [1,0,1,1],
-    #              [1,1,0,1],
-    #              [1,1,1,0]]
-    adj_block = [[0,0,0, 1,0,0, 1,0,0, 1,0,0],
-                 [0,0,0, 0,1,0, 0,1,0, 0,1,0],
-                 [0,0,0, 0,0,1, 0,0,1, 0,0,1],
-                 [1,0,0, 0,0,0, 1,0,0, 1,0,0],
-                 [0,1,0, 0,0,0, 0,1,0, 0,1,0],
-                 [0,0,1, 0,0,0, 0,0,1, 0,0,1],
-                 [1,0,0, 1,0,0, 0,0,0, 1,0,0],
-                 [0,1,0, 0,1,0, 0,0,0, 0,1,0],
-                 [0,0,1, 0,0,1, 0,0,0, 0,0,1],
-                 [1,0,0, 1,0,0, 1,0,0, 0,0,0],
-                 [0,1,0, 0,1,0, 0,1,0, 0,0,0],
-                 [0,0,1, 0,0,1, 0,0,1, 0,0,0]]
-    adjacency = sparse.block_diag([adj_block for _ in range(ne)])
-
-    # Laplacian matrix.
-    laplacian = degree - adjacency
-
-    A = sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]))
+    A = sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]), dtype=np.int8)
 
     # Discrete frame divergence.
     b = np.zeros(12*ne + n_cons)
     for ti in range(ne):
         frame = machina.frames[ti]
-        div = [ np.sum(frame.uvw[:,0]), 
-                np.sum(frame.uvw[:,1]), 
+        div = [ np.sum(frame.uvw[:,0]),
+                np.sum(frame.uvw[:,1]),
                 np.sum(frame.uvw[:,2]) ]
         b[12*ti:12*(ti+1)] = np.hstack([div for _ in range(4)])
 
     print("Beginning Conjugate Gradient...")
 
-    x = sparse.linalg.cg(A, b, tol = 10e-4, maxiter = 100000, M = A.transpose(copy=True))    
+    x = sparse.linalg.cg(A, b, tol = 1e-2)    
     print(x)
 
     # scipy.optimize.minimize(

@@ -53,10 +53,10 @@ def edge_energy(args):
     ei, one_rings, frames, euler_angles = args
 
     E = 0
-    dE = sparse.lil_matrix( (1, 3*len(frames)) )
+    dE = sparse.csr_matrix( (1, 3*len(frames)) )
 
     if ei not in one_rings:
-        return E, dE.tocsr() # Not internal.
+        return E, dE # Not internal.
     
     # All combinations of s, t around the edges' one ring.
     for combo in itertools.combinations(one_rings[ei]['tets'], 2):
