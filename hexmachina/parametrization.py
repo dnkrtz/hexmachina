@@ -12,6 +12,7 @@ import bisect
 import math
 import numpy as np
 from scipy import sparse
+import timeit
 
 from visual import *
 from machina import *
@@ -169,7 +170,7 @@ def constraint_matrix(machina, mst_edges):
             for vi in machina.tet_mesh.faces[fi]:
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
             # Constrain surface normal.
-            for i in [1, 2]:
+            for i in [1, 2]: # qr
                 C[ccount, var_index(t, vi_t[0], 2)] = 1
                 C[ccount, var_index(t, vi_t[i], 2)] = -1
                 ccount += 1
@@ -184,13 +185,13 @@ def constraint_matrix(machina, mst_edges):
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
 
             # Store laplacian.
-            for p in [0,1,2]: # points pqr
-                i = 4 * t + vi_t[p]
-                j = 4 * s + vi_s[p]
-                L[i,i] -= 1
-                L[j,j] -= 1
-                L[i,j] += 1
-                L[j,i] += 1
+            # for p in [0,1,2]: # points pqr
+            #     i = 4 * t + vi_t[p]
+            #     j = 4 * s + vi_s[p]
+            #     L[i,i] -= 1
+            #     L[j,j] -= 1
+            #     L[i,j] += 1
+            #     L[j,i] += 1
 
             # Next, apply constraints.
             # If gap is 0 (minimum spanning tree).
@@ -217,7 +218,9 @@ def constraint_matrix(machina, mst_edges):
     C = C[num_nonzeros != 0] # remove zero-rows
 
     # Expand the laplacian for uvw format.
-    L = sparse.kron(L, sparse.eye(3))
+    # L = sparse.kron(L, sparse.eye(3))
+
+    L = sparse.diags([1,1,1,-3,1,1,1],[-9,-6,-3,0,3,6,9],(12*ne,12*ne))
 
     return L, C
 
@@ -256,14 +259,14 @@ def parametrize_volume(machina):
     b = np.zeros(12*ne + n_cons)
     for ti in range(ne):
         frame = machina.frames[ti]
-        div = [ np.sum(frame.uvw[:,0]),
-                np.sum(frame.uvw[:,1]),
-                np.sum(frame.uvw[:,2]) ]
+        div = [ np.sum(frame.uvw[0,0]),
+                np.sum(frame.uvw[1,1]),
+                np.sum(frame.uvw[2,2]) ]
         b[12*ti:12*(ti+1)] = np.hstack([div for _ in range(4)])
 
     print("Beginning Conjugate Gradient...")
 
-    x = sparse.linalg.cg(A, b, tol = 1e-2)    
+    x = sparse.linalg.cg(A, b, tol = 1e-2)
     print(x)
 
     # scipy.optimize.minimize(

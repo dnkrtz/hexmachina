@@ -57,9 +57,9 @@ sys.stdout.flush()
 machina.init_framefield()
 say_ok()
 
-# Optimize 3D frame field by L-BFGS minimization.
-print('Optimizing framefield...')
-machina.optimize_framefield()
+# # Optimize 3D frame field by L-BFGS minimization.
+# print('Optimizing framefield...')
+# machina.optimize_framefield()
 
 # Output frame field to .vtk file.
 vtk_framefield(machina.frames, 'field')
