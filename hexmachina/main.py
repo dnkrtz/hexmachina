@@ -19,6 +19,16 @@ from optimization import *
 from parametrization import *
 from utils import *
 
+print("""\
+_______________________________________________________
+                                   _     _             
+  /\  /\_____  __ /\/\   __ _  ___| |__ (_)_ __   __ _ 
+ / /_/ / _ \ \/ //    \ / _` |/ __| '_ \| | '_ \ / _` |
+/ __  /  __/>  </ /\/\ \ (_| | (__| | | | | | | | (_| |
+\/ /_/ \___/_/\_\/    \/\__,_|\___|_| |_|_|_| |_|\__,_|                                       
+_______________________________________________________
+""")
+
 print('Reading triangle mesh...', end=" ")
 sys.stdout.flush()
 tri_mesh = trimesh.load_mesh('../io/cylinder.stl')
@@ -64,21 +74,20 @@ say_ok()
 # Output frame field to .vtk file.
 vtk_framefield(machina.frames, 'field')
 
-# Compute the pair matchings.
-print("Computing all pair matchings...", end=" ")
-sys.stdout.flush()
-compute_matchings(machina)
-say_ok()
-
-# # Determine the singular edges of the framefield.      
-# print("Computing singular graph...", end=" ")
+# # Compute the pair matchings.
+# print("Computing all pair matchings...", end=" ")
 # sys.stdout.flush()
-# singular_graph(machina)
+# compute_matchings(machina)
 # say_ok()
 
-print("Parametrizing volume...", end=" ")
+# Determine the singular edges of the framefield.      
+print("Computing singular graph...", end=" ")
 sys.stdout.flush()
-parametrize_volume(machina)
+singular_vertices = singular_graph(machina)[2]
+say_ok()
+
+print("Parametrizing volume")
+parametrize_volume(machina, singular_vertices)
 say_ok()
 
 

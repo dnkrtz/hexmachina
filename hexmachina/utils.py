@@ -32,13 +32,12 @@ def tet_volume(tet_mesh, ti):
     b = np.array(tet_mesh.points[tet_mesh.elements[ti][1]])
     c = np.array(tet_mesh.points[tet_mesh.elements[ti][2]])
     d = np.array(tet_mesh.points[tet_mesh.elements[ti][3]])
-    vol = np.matrix([ 1, 1, 1, 1 ],
-                    [ a[0], a[1], a[2] ],
-                    [ b[0], b[1], b[2] ],
-                    [ c[0], c[1], c[2] ],
-                    [ d[0], d[1], d[2] ])
+    vol = np.matrix([ [a[0], b[0], c[0], d[0]],
+                      [a[1], b[1], c[1], d[1]],
+                      [a[2], b[2], c[2], d[2]],
+                      [1.0, 1.0, 1.0, 1.0] ])
                     
-    return np.linalg.det(vol) / 6
+    return (np.linalg.det(vol) / 6)
 
 # Shape and edge are indices into mesh.points.
 def is_on_edge(shape, edge):

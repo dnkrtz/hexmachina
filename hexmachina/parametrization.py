@@ -12,6 +12,7 @@ import bisect
 import math
 import numpy as np
 from scipy import sparse
+import sys
 import timeit
 
 from visual import *
@@ -135,12 +136,14 @@ def singular_graph(machina):
     # Store them in lists for output.
     singular_edges = []
     improper_edges = []
-    for ei in range(len(machina.tet_mesh.edges)):     
+    singular_vertices = set()
+    # Store edges and vertices
+    for ei, edge in enumerate(machina.tet_mesh.edges):     
         if machina.edge_types[ei] > 0:
-            singular_edges.append(ei)     
+            singular_edges.append(ei)
+            singular_vertices.update([edge[0],edge[1]])
         if machina.edge_types[ei] == 2:
             improper_edges.append(ei)
-
     # Output each graph as a .vtk.
     vtk_lines(machina.tet_mesh.points,
              [machina.tet_mesh.edges[ei] for ei in singular_edges],
@@ -149,16 +152,17 @@ def singular_graph(machina):
              [machina.tet_mesh.edges[ei] for ei in improper_edges],
              'improper')
 
-    return singular_edges, improper_edges
+    return singular_edges, improper_edges, singular_vertices
 
 def var_index(ti, vi, ci):
     return ( 4 * ti + 3 * vi + ci )
 
-def constraint_matrix(machina, mst_edges):
+def linear_system(machina, mst_edges, singular_vertices):
     
     ne = len(machina.tet_mesh.elements)
     L = sparse.lil_matrix( (4 * ne, 4 * ne) )
     C = sparse.lil_matrix( (3 * 12 * ne, 12*ne) )
+    integer_vars = set()
     ccount = 0
 
     for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
@@ -170,10 +174,12 @@ def constraint_matrix(machina, mst_edges):
             for vi in machina.tet_mesh.faces[fi]:
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
             # Constrain surface normal.
-            for i in [1, 2]: # qr
-                C[ccount, var_index(t, vi_t[0], 2)] = 1
-                C[ccount, var_index(t, vi_t[i], 2)] = -1
+            w_pqr = [ var_index(t, vi_t[i], 2) for i in range(3) ]
+            for i in range(2):
+                C[ccount, w_pqr[0]] = 1
+                C[ccount, w_pqr[i]] = -1
                 ccount += 1
+                integer_vars.update(w_pqr)
             
         # Internal face with two tets in common.
         else:
@@ -183,15 +189,6 @@ def constraint_matrix(machina, mst_edges):
             for vi in machina.tet_mesh.faces[fi]:
                 vi_s.append(machina.tet_mesh.elements[s].index(vi))
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
-
-            # Store laplacian.
-            # for p in [0,1,2]: # points pqr
-            #     i = 4 * t + vi_t[p]
-            #     j = 4 * s + vi_s[p]
-            #     L[i,i] -= 1
-            #     L[j,j] -= 1
-            #     L[i,j] += 1
-            #     L[j,i] += 1
 
             # Next, apply constraints.
             # If gap is 0 (minimum spanning tree).
@@ -212,27 +209,63 @@ def constraint_matrix(machina, mst_edges):
                             C[ccount, var_index(s, vi_s[0], k)] = - match[j, k]
                             C[ccount, var_index(s, vi_s[i], k)] = match[j, k]
                         ccount += 1
-    
+
+    # Check singular edges (must be integer).
+    for ti, tet in enumerate(machina.tet_mesh.elements):
+        for local_vi, vi in enumerate(tet):
+            if vi in singular_vertices:
+                integer_vars.update(range(12*ti + 3*local_vi, 12*ti + 3*local_vi + 2))
+
     C = C.tocsr()
     num_nonzeros = np.diff(C.indptr)
     C = C[num_nonzeros != 0] # remove zero-rows
 
-    # Expand the laplacian for uvw format.
-    # L = sparse.kron(L, sparse.eye(3))
-
+    # Create laplacian of tetrahedrons.
     L = sparse.diags([1,1,1,-3,1,1,1],[-9,-6,-3,0,3,6,9],(12*ne,12*ne))
 
-    return L, C
+    return L, C, integer_vars
 
-def icall(xk):
-    print(xk)
+def adaptive_rounding(machina):
+    pass
 
-def parametrize_volume(machina):
+
+# Remove variable from system. All sparse matrices passed as CSR.
+def remove_var(A, x, b, i):
+
+    # Update rhs b (absorbs var).
+    x = sparse.lil_matrix(x, (len(x),1))
+    b = b - A.getrow(i).dot(x[i])
+    b.rows = np.delete(b.rows, i, 0)
+    b.data = np.delete(b.data, i)
+    b._shape = (b._shape[0], b._shape[1] - 1)
+
+    # Update the x vector
+    x.tolil((len(x),1))
+    x.rows = np.delete(x.rows, i)
+    x.data = np.delete(A.data, i)
+    x._shape = (x._shape[0], x._shape[1] - 1)
+
+    # Update rows of A matrix.
+    A.tolil()
+    A.rows = np.delete(A.rows, i)
+    A.data = np.delete(A.data, i)
+    A._shape = (A._shape[0] - 1, A._shape[1])
+
+    # Update columns of A matrix.
+    A = A.transpose()
+    A.rows = np.delete(A.rows, i)
+    A.data = np.delete(A.data, i)
+    A._shape = (A._shape[0], A._shape[1] - 1)
+    A = A.transpose()
+
+    return A.transpose, x, b
+
+def parametrize_volume(machina, singular_vertices):
 
     # Each vertex has multiple values, depending
     # on the number of tets it's a part of.
     ne = len(machina.tet_mesh.elements)
-    f_map = np.zeros(12 * ne)
+    f_atlas = np.zeros(12 * ne)
 
     # Minimum spanning tree of dual mesh as list of face indices.
     # Span until all tets have been visited.
@@ -249,14 +282,20 @@ def parametrize_volume(machina):
             visited_tets.add(ti)
         ti += 1
 
-    # Remove translational freedom with constraints.
-    laplacian, cons = constraint_matrix(machina, mst_edges)
+    print('Computing laplacian and constraints...')
+
+    # Create linear system based on laplacian and constraints.
+    laplacian, cons, int_vars = linear_system(machina, mst_edges, singular_vertices)
     n_cons = cons.get_shape()[0]
+
+    # tet_weights = [ tet_volume(machina.tet_mesh, ti) for ti in range(ne) ]
+    # for ti in range(ne):
+    #     laplacian[:,12*ti:12*(ti+1)] = tet_weights[ti] * laplacian[:,12*ti:12*(ti+1)]
 
     A = sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]), dtype=np.int8)
 
     # Discrete frame divergence.
-    b = np.zeros(12*ne + n_cons)
+    b = np.zeros((12*ne + n_cons))
     for ti in range(ne):
         frame = machina.frames[ti]
         div = [ np.sum(frame.uvw[0,0]),
@@ -264,57 +303,52 @@ def parametrize_volume(machina):
                 np.sum(frame.uvw[2,2]) ]
         b[12*ti:12*(ti+1)] = np.hstack([div for _ in range(4)])
 
-    print("Beginning Conjugate Gradient...")
+    print("(Conjugate Gradient)...", end=" ")
+    sys.stdout.flush()
 
-    x = sparse.linalg.cg(A, b, tol = 1e-2)
+    x, info = sparse.linalg.cg(A, b, tol = 1e-2)
+
+    # Enforce integer variables
+    for vi in sorted(int_vars,reverse=True):
+        value = x[vi]
+        rounded = int(round(value))
+        if np.abs(value - rounded) > 1e-4:
+            continue
+        # Otherwise, delta is small enough to round.
+        x[vi] = rounded
+        # Update linear system.
+        A, x, b = remove_var(A, x, b, vi)
+                
+    print(len(x))
+
     print(x)
 
-    # scipy.optimize.minimize(
-    #     fun = parametrization_energy,
-    #     x0 = f_map,
-    #     args = machina,
-    #     method = 'CG',
-    #     options = {
-    #         'disp': True,
-    #         ''
-    #     }
-    # )
+
+
+
+
+
+    # Recompute gaps
+    gaps = np.zeros( (len(machina.tet_mesh.faces),3) )
+    for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
+        if -1 in adj_ti:
+            continue
+        # Get local tet vertex indices of shared face vertices.
+        s, t = adj_ti[0], adj_ti[1]
+        vi = machina.tet_mesh.faces[fi][0]
+        vi_s = machina.tet_mesh.elements[s].index(vi)
+        vi_t = machina.tet_mesh.elements[t].index(vi)
+        f_s = x[var_index(s, vi_s, 0):var_index(s, vi_s, 3)]
+        f_t = x[var_index(t, vi_t, 0):var_index(t, vi_t, 3)]
+        gaps[fi,:] = f_t - np.dot(chiral_symmetries[machina.matchings[fi]], f_s)
+
     
-
-def parametrization_energy(f_map, machina):
-
-    result = 0
-
-    # Build the summation.
-    for ti, tet in enumerate(machina.tet_mesh.elements):
-        volume = tet_volume(machina, ti)
-        # On each tetrahedron, we have 4 values of (u,v,w)
-        pts = [ machina.tet_mesh.points[tet[i]] for i in range(4) ]
-        u = [ f_map[ti, i, 0] for i in range(4) ]
-        v = [ f_map[ti, i, 1] for i in range(4) ]
-        w = [ f_map[ti, i, 2] for i in range(4) ]
-        # Interpolating the finite difference gives us the gradient
-        # with respect to euclidean coords (x,y,z).
-        du = (1/3)*((u[0] - u[1]) / (pts[0] - pts[1]) + \
-                    (u[0] - u[2]) / (pts[0] - pts[2]) + \
-                    (u[0] - u[3]) / (pts[0] - pts[3]))
-        dv = (1/3)*((v[0] - v[1]) / (pts[0] - pts[1]) + \
-                    (v[0] - v[2]) / (pts[0] - pts[2]) + \
-                    (v[0] - v[3]) / (pts[0] - pts[3]))
-        dw = (1/3)*((w[0] - w[1]) / (pts[0] - pts[1]) + \
-                    (w[0] - w[2]) / (pts[0] - pts[2]) + \
-                    (w[0] - w[3]) / (pts[0] - pts[3]))
-        # Compute D for the tetrahedron.
-        D = np.linalg.norm(h * du - machina.frames[ti].uvw[:,0])**2 + \
-            np.linalg.norm(h * dv - machina.frames[ti].uvw[:,1])**2 + \
-            np.linalg.norm(h * dw - machina.frames[ti].uvw[:,2])**2
-
-        result += volume * D
-
-    return result
-        
-
-
+    
+    
+    print(gaps)
 
 
     
+
+
+
