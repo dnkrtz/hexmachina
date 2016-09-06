@@ -225,40 +225,59 @@ def linear_system(machina, mst_edges, singular_vertices):
 
     return L, C, integer_vars
 
+# def drop_rows(M, idx_to_drop, drop_cols=False):
+#     C = M.tocoo()
+#     keep = ~np.in1d(C.row, idx_to_drop)
+#     C.data, C.row, C.col = C.data[keep], C.row[keep], C.col[keep]
+#     C.row -= idx_to_drop.searchsorted(C.row)
+#     C._shape = (C._shape[0] - len(idx_to_drop), C._shape[1])
+#     if drop_cols:
+#         keep = ~np.in1d(C.col, idx_to_drop)
+#         C.data, C.row, C.col = C.data[keep], C.row[keep], C.col[keep]
+#         C.col -= idx_to_drop.searchsorted(C.col)
+#         C._shape = (C._shape[0], C._shape[1] - len(idx_to_drop))
+    
+#     return C.tocsr()
+
+def drop_rows(M, var_i):
+    M = M.tolil()
+    M.rows = np.delete(M.rows, var_i)
+    M.data = np.delete(M.data, var_i)
+    M._shape = (M._shape[0] - len(var_i), M._shape[1])
+    return M
+
+# Remove variables from system.
+# The 'b' matrix should have its i value(s) set before calling.
+def reduce_system(A, x, b, var_i):
+
+    # Convert all the lil format.
+    A = sparse.lil_matrix(A)
+    x = sparse.lil_matrix(x.reshape((len(x),1)))
+    b = sparse.lil_matrix(b.reshape((len(b),1)))
+
+    # Update rhs b (absorbs vars).
+    for i in var_i:
+        b = b - x[i,0] * A.getcol(i)
+
+    # Drop rows form b vector.
+    b = drop_rows(b, var_i) 
+    # Drop rows from the x vector.
+    x = drop_rows(x, var_i)
+    # Drop rows from the A matrix.
+    A = drop_rows(x, var_i)
+    # Drop cols from the A matrix.    
+    A.transpose()
+    A = drop_rows(x, var_i)    
+    A.transpose()
+
+    return A, x, b
+
 def adaptive_rounding(machina):
     pass
 
-
-# Remove variable from system. All sparse matrices passed as CSR.
-def remove_var(A, x, b, i):
-
-    # Update rhs b (absorbs var).
-    x = sparse.lil_matrix(x, (len(x),1))
-    b = b - A.getrow(i).dot(x[i])
-    b.rows = np.delete(b.rows, i, 0)
-    b.data = np.delete(b.data, i)
-    b._shape = (b._shape[0], b._shape[1] - 1)
-
-    # Update the x vector
-    x.tolil((len(x),1))
-    x.rows = np.delete(x.rows, i)
-    x.data = np.delete(A.data, i)
-    x._shape = (x._shape[0], x._shape[1] - 1)
-
-    # Update rows of A matrix.
-    A.tolil()
-    A.rows = np.delete(A.rows, i)
-    A.data = np.delete(A.data, i)
-    A._shape = (A._shape[0] - 1, A._shape[1])
-
-    # Update columns of A matrix.
-    A = A.transpose()
-    A.rows = np.delete(A.rows, i)
-    A.data = np.delete(A.data, i)
-    A._shape = (A._shape[0], A._shape[1] - 1)
-    A = A.transpose()
-
-    return A.transpose, x, b
+def something(machina, f_map):
+    fun = a * f_map[0] + b * f_map[0]
+    pass
 
 def parametrize_volume(machina, singular_vertices):
 
@@ -308,7 +327,12 @@ def parametrize_volume(machina, singular_vertices):
 
     x, info = sparse.linalg.cg(A, b, tol = 1e-2)
 
+    say_ok()
+
+    print(len(x))
+
     # Enforce integer variables
+    vars_to_remove = []
     for vi in sorted(int_vars,reverse=True):
         value = x[vi]
         rounded = int(round(value))
@@ -316,36 +340,32 @@ def parametrize_volume(machina, singular_vertices):
             continue
         # Otherwise, delta is small enough to round.
         x[vi] = rounded
-        # Update linear system.
-        A, x, b = remove_var(A, x, b, vi)
-                
-    print(len(x))
+        vars_to_remove.append(vi)
+    vars_to_remove = np.array(vars_to_remove)
 
-    print(x)
+    # Update linear system.
+    A, x, b = reduce_system(A, x, b, vars_to_remove)
+
+    print(x.shape[0])
+
+    print(x[:12*ne,0])
 
 
+    # # Recompute gaps
+    # gaps = np.zeros( (len(machina.tet_mesh.faces),3) )
+    # for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
+    #     if -1 in adj_ti:
+    #         continue
+    #     # Get local tet vertex indices of shared face vertices.
+    #     s, t = adj_ti[0], adj_ti[1]
+    #     vi = machina.tet_mesh.faces[fi][0]
+    #     vi_s = machina.tet_mesh.elements[s].index(vi)
+    #     vi_t = machina.tet_mesh.elements[t].index(vi)
+    #     f_s = x[var_index(s, vi_s, 0):var_index(s, vi_s, 3)]
+    #     f_t = x[var_index(t, vi_t, 0):var_index(t, vi_t, 3)]
+    #     gaps[fi,:] = f_t - np.dot(chiral_symmetries[machina.matchings[fi]], f_s)
 
-
-
-
-    # Recompute gaps
-    gaps = np.zeros( (len(machina.tet_mesh.faces),3) )
-    for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
-        if -1 in adj_ti:
-            continue
-        # Get local tet vertex indices of shared face vertices.
-        s, t = adj_ti[0], adj_ti[1]
-        vi = machina.tet_mesh.faces[fi][0]
-        vi_s = machina.tet_mesh.elements[s].index(vi)
-        vi_t = machina.tet_mesh.elements[t].index(vi)
-        f_s = x[var_index(s, vi_s, 0):var_index(s, vi_s, 3)]
-        f_t = x[var_index(t, vi_t, 0):var_index(t, vi_t, 3)]
-        gaps[fi,:] = f_t - np.dot(chiral_symmetries[machina.matchings[fi]], f_s)
-
-    
-    
-    
-    print(gaps)
+    # print(gaps)
 
 
     
