@@ -45,3 +45,15 @@ def plot_mesh(vertices, faces):
     ax.plot_trisurf(verts[:,0], verts[:,1], verts[:,2], triangles=faces)
 
     plt.show()
+
+def plot_points(points):
+    if len(points) == 0:
+        return
+    
+    fig = plt.figure(num=None, figsize=(12, 10), dpi=80)
+    ax = fig.add_subplot(111, projection='3d')
+
+    points = np.array(points)
+    ax.scatter(points[:,0], points[:,1], points[:,2])
+
+    plt.show()

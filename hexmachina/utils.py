@@ -40,6 +40,7 @@ def tet_volume(tet_mesh, ti):
     return (np.linalg.det(vol) / 6)
 
 # Shape and edge are indices into mesh.points.
+# Returns true if the edge is on the shape (triangle).
 def is_on_edge(shape, edge):
     if ei[0] in shape and ei[1] in shape:
         return True
@@ -84,7 +85,6 @@ def vtk_curvature(surf_mesh, filename):
         lines.append([4*i, 4*i + 1])
         lines.append([4*i + 2, 4*i + 3])
 
-
     structure = PolyData(points=points, lines=lines)
 
     vtk = VtkData(structure, 'Curvature cross-field')
@@ -96,5 +96,12 @@ def vtk_lines(points, lines, filename):
     vtk = VtkData(\
           UnstructuredGrid(points, line=lines),
           'Singular graph')
+
+    vtk.tofile('../io/vtk/%s' % filename)
+
+def vtk_points(points, filename):
+    vtk = VtkData(\
+          PolyData(points, vertices = [ range(len(points)) ]),
+          'Points')
 
     vtk.tofile('../io/vtk/%s' % filename)

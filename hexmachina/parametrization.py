@@ -37,59 +37,6 @@ def compute_matchings(machina):
         # Store the matching, as an index into chiral symmetry group.
         machina.matchings[fi] = np.argmin(args)
 
-# Greedy matching adjustment (section 3.3.1)
-def matching_adjustment(machina):
-    # Recompute the matchings.
-    machina.compute_matchings(machina)
-
-    # Create edge dictionary.
-    edges = {}
-    for ei, edge in enumerate(machina.tet_mesh.edges):
-        edges[(sorted(edge))] = ei
-
-    # Loop over all edges.
-    for ei in improper_edges:
-        edge = machina.tet_mesh.edges[ei]
-        ti = machina.tet_mesh.edge_adjacent_elements[ei]
-        tet_pairs = []
-        for neigh_ti in machina.tet_mesh.neighbors[ti]:
-            # Make sure this neighbor shares the edge.
-            if is_on_edge(machina.tet_mesh.elements[ti], machina.tet_mesh.edges[ei]):
-                tet_pair.append(ti, neigh_ti)
-        
-        # Face to match.
-        tet_pair = (ti, neigh_ti)
-        if tet_pair not in machina.matchings:
-            tet_pair = tet_pair[1::] # reverse
-
-        tet = machina.tet_mesh.elements[tet_pair[0]]
-        neigh = machina.tet_mesh.neighbors[tet_pair[1]]
-
-        # Define fi and other edges.
-        fi = 0
-        face = machina.tet_mesh.faces[fi]
-        other_vi = face.remove(edge[0]).remove(edge[1])
-        edge1 = sorted([other_vi, edge[0]])
-        edge2 = sorted([other_vi, edge[1]])
-        ei_1 = edges[edge1]
-        ei_2 = edges[edge2]
-        
-        # Rank the 24 possible chiral symmetries.
-        sorted_permutations = []
-        for permutation in chiral_symmetries:
-            arg = machina.frames[pair[0]].uvw - machina.frames[pair[1]].uvw * permutation.T
-            bisect.insort_left(sorted_permutations, np.linalg.norm(arg))
-            
-        # Test each permutation, in order.
-        for arg in sorted_permutations:
-            machina.matchings[pair] = chiral_symmetries[arg]
-            types = [ compute_edge_type(machina, ei),
-                      compute_edge_type(machina, ei_1),
-                      compute_edge_type(machina, ei_2) ]
-            if np.all(types) and 2 in types:
-                continue 
-        
-
 def compute_edge_types(machina, edge_index):
     # Classify the internal edges by type, and find the singular graph.
     # The edge type is determined via concatenation of the matchings around 
@@ -154,6 +101,9 @@ def singular_graph(machina):
 
     return singular_edges, improper_edges, singular_vertices
 
+# Since the variable are flattened as vectors, where each tet has
+# four vertices and each vertex has 3 coordinates. The arguments are
+# tet index (ti), local vertex index (vi) and coordinate index (ci).
 def var_index(ti, vi, ci):
     return ( 4 * ti + 3 * vi + ci )
 
@@ -216,28 +166,39 @@ def linear_system(machina, mst_edges, singular_vertices):
             if vi in singular_vertices:
                 integer_vars.update(range(12*ti + 3*local_vi, 12*ti + 3*local_vi + 2))
 
+    print(C.shape[0])
+
     C = C.tocsr()
     num_nonzeros = np.diff(C.indptr)
     C = C[num_nonzeros != 0] # remove zero-rows
+
+    print(C.shape[0])
+
+    # Split C vertically into square matrices for reduction.
+    slab = C
+    count = 0
+    nv = slab.shape[1]
+    while (slab.shape[0] < nv):
+        # Extract square sub-matrix
+        sub_block = slab[0 : nv, :]
+        lu = sparse.linalg.splu(sub_block)
+        # Update C matrix
+        C[nv*count : nv*(count+1), :] = lu.U
+        count += 1
+        # Update slab
+        slab = slab[nv:, :]
+        
+
+    C = C.tocsr()
+    num_nonzeros = np.diff(C.indptr)
+    C = C[num_nonzeros != 0] # remove zero-rows
+
+    print(C.shape[0])
 
     # Create laplacian of tetrahedrons.
     L = sparse.diags([1,1,1,-3,1,1,1],[-9,-6,-3,0,3,6,9],(12*ne,12*ne))
 
     return L, C, integer_vars
-
-# def drop_rows(M, idx_to_drop, drop_cols=False):
-#     C = M.tocoo()
-#     keep = ~np.in1d(C.row, idx_to_drop)
-#     C.data, C.row, C.col = C.data[keep], C.row[keep], C.col[keep]
-#     C.row -= idx_to_drop.searchsorted(C.row)
-#     C._shape = (C._shape[0] - len(idx_to_drop), C._shape[1])
-#     if drop_cols:
-#         keep = ~np.in1d(C.col, idx_to_drop)
-#         C.data, C.row, C.col = C.data[keep], C.row[keep], C.col[keep]
-#         C.col -= idx_to_drop.searchsorted(C.col)
-#         C._shape = (C._shape[0], C._shape[1] - len(idx_to_drop))
-    
-#     return C.tocsr()
 
 def drop_rows(M, var_i):
     M = M.tolil()
@@ -275,9 +236,6 @@ def reduce_system(A, x, b, var_i):
 def adaptive_rounding(machina):
     pass
 
-def something(machina, f_map):
-    fun = a * f_map[0] + b * f_map[0]
-    pass
 
 def parametrize_volume(machina, singular_vertices):
 
@@ -307,10 +265,6 @@ def parametrize_volume(machina, singular_vertices):
     laplacian, cons, int_vars = linear_system(machina, mst_edges, singular_vertices)
     n_cons = cons.get_shape()[0]
 
-    # tet_weights = [ tet_volume(machina.tet_mesh, ti) for ti in range(ne) ]
-    # for ti in range(ne):
-    #     laplacian[:,12*ti:12*(ti+1)] = tet_weights[ti] * laplacian[:,12*ti:12*(ti+1)]
-
     A = sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]), dtype=np.int8)
 
     # Discrete frame divergence.
@@ -322,7 +276,9 @@ def parametrize_volume(machina, singular_vertices):
                 np.sum(frame.uvw[2,2]) ]
         b[12*ti:12*(ti+1)] = np.hstack([div for _ in range(4)])
 
-    print("(Conjugate Gradient)...", end=" ")
+    b = b / 3
+
+    print("Conjugate Gradient...", end=" ")
     sys.stdout.flush()
 
     x, info = sparse.linalg.cg(A, b, tol = 1e-2)
@@ -330,25 +286,26 @@ def parametrize_volume(machina, singular_vertices):
     say_ok()
 
     print(len(x))
+    print(x[:12*ne])
 
-    # Enforce integer variables
-    vars_to_remove = []
-    for vi in sorted(int_vars,reverse=True):
-        value = x[vi]
-        rounded = int(round(value))
-        if np.abs(value - rounded) > 1e-4:
-            continue
-        # Otherwise, delta is small enough to round.
-        x[vi] = rounded
-        vars_to_remove.append(vi)
-    vars_to_remove = np.array(vars_to_remove)
+    return x
 
-    # Update linear system.
-    A, x, b = reduce_system(A, x, b, vars_to_remove)
+    # # Enforce integer variables
+    # vars_to_remove = []
+    # for vi in sorted(int_vars,reverse=True):
+    #     value = x[vi]
+    #     rounded = int(round(value))
+    #     if np.abs(value - rounded) > 1e-4:
+    #         continue
+    #     # Otherwise, delta is small enough to round.
+    #     x[vi] = rounded
+    #     vars_to_remove.append(vi)
+    # vars_to_remove = np.array(vars_to_remove)
 
-    print(x.shape[0])
+    # # Update linear system.
+    # A, x, b = reduce_system(A, x, b, vars_to_remove)
 
-    print(x[:12*ne,0])
+    # print(x.shape[0])
 
 
     # # Recompute gaps

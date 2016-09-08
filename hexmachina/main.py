@@ -14,6 +14,7 @@ import math
 import numpy as np
 import trimesh
 
+from extraction import *
 from machina import HexMachina
 from optimization import *
 from parametrization import *
@@ -87,7 +88,12 @@ singular_vertices = singular_graph(machina)[2]
 say_ok()
 
 print("Parametrizing volume")
-parametrize_volume(machina, singular_vertices)
+uvw_map = parametrize_volume(machina, singular_vertices)
+say_ok()
+
+print("Extracting hexahedrons...")
+iso_pts = extract_isolines(machina, uvw_map)
+
 say_ok()
 
 
