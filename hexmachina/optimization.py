@@ -53,7 +53,7 @@ def edge_energy(args):
     ei, one_rings, frames, euler_angles = args
 
     E = 0
-    dE = sparse.csr_matrix( (1, 3*len(frames)) )
+    dE = sparse.lil_matrix( (1, 3*len(frames)) )
 
     if ei not in one_rings:
         return E, dE # Not internal.

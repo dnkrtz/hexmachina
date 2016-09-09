@@ -87,13 +87,12 @@ sys.stdout.flush()
 singular_vertices = singular_graph(machina)[2]
 say_ok()
 
-print("Parametrizing volume")
-uvw_map = parametrize_volume(machina, singular_vertices)
+print("Parametrizing volume...")
+uvw_map = parametrize_volume(machina, singular_vertices, 2.0)
 say_ok()
 
-print("Extracting hexahedrons...")
+print("Extracting hexahedrons...", end=" ")
 iso_pts = extract_isolines(machina, uvw_map)
-
 say_ok()
 
 

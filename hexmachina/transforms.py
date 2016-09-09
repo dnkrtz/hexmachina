@@ -80,17 +80,16 @@ def convert_to_dR(frame, alpha, beta, gamma):
 chiral_symmetries = [
     # Identity
     np.matrix([[ 1,  0,  0], [ 0,  1,  0], [ 0,  0,  1]]),
-    # 90 degree 4-fold rotations
-    np.matrix([[ 0, -1,  0], [ 1,  0,  0], [ 0,  0,  1]]),
-    np.matrix([[ 1,  0,  0], [ 0,  0, -1], [ 0,  1,  0]]),
-    np.matrix([[ 0,  0,  1], [ 0,  1,  0], [-1,  0,  0]]),
-    np.matrix([[ 0,  1,  0], [-1,  0,  0], [ 0,  0,  1]]),
-    np.matrix([[ 1,  0,  0], [ 0,  0,  1], [ 0, -1,  0]]),
-    np.matrix([[ 0,  0, -1], [ 0,  1,  0], [ 1,  0,  0]]),
-    # 180 degree 4-fold rotations
-    np.matrix([[-1,  0,  0], [ 0, -1,  0], [ 0,  0,  1]]),
-    np.matrix([[ 1,  0,  0], [ 0, -1,  0], [ 0,  0, -1]]),
-    np.matrix([[-1,  0,  0], [ 0,  1,  0], [ 0,  0, -1]]),
+    # 90 and 180 degree 4-fold rotations
+    np.matrix([[ 0, -1,  0], [ 1,  0,  0], [ 0,  0,  1]]), # Jw
+    np.matrix([[-1,  0,  0], [ 0, -1,  0], [ 0,  0,  1]]), # Jw
+    np.matrix([[ 0,  1,  0], [-1,  0,  0], [ 0,  0,  1]]), # Jw
+    np.matrix([[ 1,  0,  0], [ 0,  0, -1], [ 0,  1,  0]]), # Ju
+    np.matrix([[ 1,  0,  0], [ 0,  0,  1], [ 0, -1,  0]]), # Ju
+    np.matrix([[ 1,  0,  0], [ 0, -1,  0], [ 0,  0, -1]]), # Ju
+    np.matrix([[ 0,  0,  1], [ 0,  1,  0], [-1,  0,  0]]), # Jv
+    np.matrix([[ 0,  0, -1], [ 0,  1,  0], [ 1,  0,  0]]), # Jv
+    np.matrix([[-1,  0,  0], [ 0,  1,  0], [ 0,  0, -1]]), # Jv
     # 120 degree 3-fold rotations
     np.matrix([[ 0,  1,  0], [ 0,  0, -1], [-1,  0,  0]]),
     np.matrix([[ 0,  0, -1], [ 1,  0,  0], [ 0, -1,  0]]),

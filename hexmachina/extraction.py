@@ -13,30 +13,6 @@ import numpy as np
 
 from utils import vtk_points
 
-# Linear interpolation over a tetrahedron.
-# def barycentric_interp(coords, values, p):
-
-#     ab = coords[1,:] - coords[0,:]
-#     ac = coords[2,:] - coords[0,:]
-#     ad = coords[3,:] - coords[0,:]
-#     bd = coords[3,:] - coords[1,:]
-#     bc = coords[2,:] - coords[1,:]
-#     ap = p - coords[0,:]
-#     bp = p - coords[1,:]
-
-#     # No redundant 1/6 term in volumes.
-#     vol_a = np.dot(bp, np.cross(bd, bc))
-#     vol_b = np.dot(ap, np.cross(ac, ad))
-#     vol_c = np.dot(ap, np.cross(ad, ab))
-#     vol_d = np.dot(ap, np.cross(ab, ac))
-#     vol = np.dot(ab, np.cross(ac, ad))
-
-#     # Interpolated value at p
-#     p_val = ( values[0,:] * vol_a + values[1,:] * vol_b + \
-#               values[2,:] * vol_c + values[3,:] * vol_d ) / vol
-
-#     return np.array(p_val)
-
 # Computes the euclidean coordinates of the point with the desired
 # uvw-map value. Value is interpolated over the linear tetrahedral.
 def barycentric_interp(values, coords, desired_val):
@@ -71,18 +47,21 @@ def extract_isolines(machina, f_map):
         f = np.zeros((4,3)) # uvw values at each point
         for vi in [0,1,2,3]: # tet points pqrs
             p[vi,:] = machina.tet_mesh.points[tet[vi]]
-            f[vi,:] = f_map[4*ti+vi:4*ti+vi+3]
+            f[vi,:] = f_map[12*ti+3*vi : 12*ti+3*vi+3]
         
         # Integer iso-values in this tet.
         u_int, v_int, w_int = [], [], []
         u_vtx = f[:,0]
         v_vtx = f[:,1]
         w_vtx = f[:,2]
-        
-        # Find which integer points are on this face.
+
+        # Find which integer points are in this tet.
         u_min, u_max = np.amin(u_vtx), np.amax(u_vtx)
         v_min, v_max = np.amin(v_vtx), np.amax(v_vtx)
         w_min, w_max = np.amin(w_vtx), np.amax(w_vtx)
+
+        # print("Min: %f" %v_min)
+        # print("Max: %f" %v_max)
 
         # Increment on integers in the range.
         u_cur = np.ceil(u_min)
@@ -98,16 +77,20 @@ def extract_isolines(machina, f_map):
             w_int.append(w_cur)
             w_cur += 1
 
+        # print(w_int)
+
         # Make sure there is a uvw-integer intersection in this tet.
         if len(u_int) > 0 and len(v_int) > 0 and len(w_int) > 0:
+            
             uvw = [[u,v,w] for u in u_int for v in v_int for w in w_int]
 
             # Interpolate using linear barycentric interpolation.
             for val in uvw:
                 iso_pt = barycentric_interp(f, p, val)
+                # Iso-points that are none 
                 if iso_pt != None:
-                    iso_pts.append(iso_pt)
-                    print(iso_pt)
+                    # uvw_lookup[val] = len(iso_pts)
+                    iso_pts.append(iso_pt)        
 
     vtk_points(iso_pts, 'isopoints')
     

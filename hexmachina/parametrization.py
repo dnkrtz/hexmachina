@@ -74,7 +74,9 @@ def compute_edge_types(machina, edge_index):
         if is_singular: machina.edge_types[ei] = 1
         if is_improper: machina.edge_types[ei] = 2
         
-
+# Computes singular graph, that is, all non-identity (singular)
+# edges. Returns the singular edges, improper edges and singular
+# vertices.
 def singular_graph(machina):
     # Compute matchings.
     compute_matchings(machina)
@@ -83,12 +85,14 @@ def singular_graph(machina):
     # Store them in lists for output.
     singular_edges = []
     improper_edges = []
-    singular_vertices = set()
+    singular_vertices = dict()
     # Store edges and vertices
     for ei, edge in enumerate(machina.tet_mesh.edges):     
         if machina.edge_types[ei] > 0:
             singular_edges.append(ei)
-            singular_vertices.update([edge[0],edge[1]])
+            # Store the vertices with associated singularity type.
+            singular_vertices[edge[0]] = machina.edge_types[ei]
+            singular_vertices[edge[1]] = machina.edge_types[ei]
         if machina.edge_types[ei] == 2:
             improper_edges.append(ei)
     # Output each graph as a .vtk.
@@ -105,15 +109,13 @@ def singular_graph(machina):
 # four vertices and each vertex has 3 coordinates. The arguments are
 # tet index (ti), local vertex index (vi) and coordinate index (ci).
 def var_index(ti, vi, ci):
-    return ( 4 * ti + 3 * vi + ci )
+    return ( 12 * ti + 3 * vi + ci )
 
 def linear_system(machina, mst_edges, singular_vertices):
     
     ne = len(machina.tet_mesh.elements)
-    L = sparse.lil_matrix( (4 * ne, 4 * ne) )
     C = sparse.lil_matrix( (3 * 12 * ne, 12*ne) )
-    integer_vars = set()
-    ccount = 0
+    ccount = 0 # constraint counter
 
     for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
         s, t = adj_ti[0], adj_ti[1]
@@ -129,7 +131,6 @@ def linear_system(machina, mst_edges, singular_vertices):
                 C[ccount, w_pqr[0]] = 1
                 C[ccount, w_pqr[i]] = -1
                 ccount += 1
-                integer_vars.update(w_pqr)
             
         # Internal face with two tets in common.
         else:
@@ -160,45 +161,16 @@ def linear_system(machina, mst_edges, singular_vertices):
                             C[ccount, var_index(s, vi_s[i], k)] = match[j, k]
                         ccount += 1
 
-    # Check singular edges (must be integer).
-    for ti, tet in enumerate(machina.tet_mesh.elements):
-        for local_vi, vi in enumerate(tet):
-            if vi in singular_vertices:
-                integer_vars.update(range(12*ti + 3*local_vi, 12*ti + 3*local_vi + 2))
-
-    print(C.shape[0])
+    
 
     C = C.tocsr()
     num_nonzeros = np.diff(C.indptr)
     C = C[num_nonzeros != 0] # remove zero-rows
-
-    print(C.shape[0])
-
-    # Split C vertically into square matrices for reduction.
-    slab = C
-    count = 0
-    nv = slab.shape[1]
-    while (slab.shape[0] < nv):
-        # Extract square sub-matrix
-        sub_block = slab[0 : nv, :]
-        lu = sparse.linalg.splu(sub_block)
-        # Update C matrix
-        C[nv*count : nv*(count+1), :] = lu.U
-        count += 1
-        # Update slab
-        slab = slab[nv:, :]
-        
-
-    C = C.tocsr()
-    num_nonzeros = np.diff(C.indptr)
-    C = C[num_nonzeros != 0] # remove zero-rows
-
-    print(C.shape[0])
 
     # Create laplacian of tetrahedrons.
     L = sparse.diags([1,1,1,-3,1,1,1],[-9,-6,-3,0,3,6,9],(12*ne,12*ne))
 
-    return L, C, integer_vars
+    return L, C
 
 def drop_rows(M, var_i):
     M = M.tolil()
@@ -225,24 +197,46 @@ def reduce_system(A, x, b, var_i):
     # Drop rows from the x vector.
     x = drop_rows(x, var_i)
     # Drop rows from the A matrix.
-    A = drop_rows(x, var_i)
-    # Drop cols from the A matrix.    
-    A.transpose()
-    A = drop_rows(x, var_i)    
-    A.transpose()
+    A = drop_rows(A, var_i)
+    # Drop cols from the A matrix.
+    A = drop_rows(A.transpose(), var_i)
 
     return A, x, b
 
-def adaptive_rounding(machina):
+def flag_integer_vars(machina, singular_vertices):
+
+    int_vars = set()
+
+    # Iterate through all variables
+    for ti, tet in enumerate(machina.tet_mesh.elements):
+        for local_vi, vi in enumerate(tet):
+            # Singular vertices constrain two of their variables.
+            # If singularity type is Jw, then u, v must be integers.
+            if vi in singular_vertices:
+                if singular_vertices[vi] < 4:
+                    int_vars.add(var_index(ti, local_vi, 0))
+                    int_vars.add(var_index(ti, local_vi, 1))
+                elif singular_vertices[vi] < 7:
+                    int_vars.add(var_index(ti, local_vi, 1))
+                    int_vars.add(var_index(ti, local_vi, 2))
+                else: # Doesn't check for improper.
+                    int_vars.add(var_index(ti, local_vi, 2))
+                    int_vars.add(var_index(ti, local_vi, 0))
+            # Surface vertices must be integer in w.
+            if vi in machina.surf_mesh.vertex_map:
+                int_vars.add(var_index(ti, local_vi, 2))
+    
+    return int_vars
+            
+
+def adaptive_rounding(machina, int_vars):
     pass
 
-
-def parametrize_volume(machina, singular_vertices):
+def parametrize_volume(machina, singular_vertices, h):
 
     # Each vertex has multiple values, depending
     # on the number of tets it's a part of.
     ne = len(machina.tet_mesh.elements)
-    f_atlas = np.zeros(12 * ne)
 
     # Minimum spanning tree of dual mesh as list of face indices.
     # Span until all tets have been visited.
@@ -262,70 +256,98 @@ def parametrize_volume(machina, singular_vertices):
     print('Computing laplacian and constraints...')
 
     # Create linear system based on laplacian and constraints.
-    laplacian, cons, int_vars = linear_system(machina, mst_edges, singular_vertices)
+    laplacian, cons = linear_system(machina, mst_edges, singular_vertices)
     n_cons = cons.get_shape()[0]
 
-    A = sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]), dtype=np.int8)
+    A = sparse.bmat(([[laplacian, cons.transpose()],[cons, None]]), dtype=np.int32)
 
     # Discrete frame divergence.
     b = np.zeros((12*ne + n_cons))
     for ti in range(ne):
+        tet_vol = tet_volume(machina.tet_mesh, ti)
         frame = machina.frames[ti]
         div = [ np.sum(frame.uvw[0,0]),
                 np.sum(frame.uvw[1,1]),
                 np.sum(frame.uvw[2,2]) ]
-        b[12*ti:12*(ti+1)] = np.hstack([div for _ in range(4)])
+        b[12*ti : 12*(ti+1)] = np.hstack([ div for _ in range(4)])
 
-    b = b / 3
+    b = np.divide(b, h)
 
-    print("Conjugate Gradient...", end=" ")
+    print("Conjugate Gradient... (Round 1)", end=" ")
     sys.stdout.flush()
 
     x, info = sparse.linalg.cg(A, b, tol = 1e-2)
 
     say_ok()
 
-    print(len(x))
-    print(x[:12*ne])
-
-    return x
-
-    # # Enforce integer variables
-    # vars_to_remove = []
-    # for vi in sorted(int_vars,reverse=True):
-    #     value = x[vi]
-    #     rounded = int(round(value))
-    #     if np.abs(value - rounded) > 1e-4:
-    #         continue
-    #     # Otherwise, delta is small enough to round.
-    #     x[vi] = rounded
-    #     vars_to_remove.append(vi)
-    # vars_to_remove = np.array(vars_to_remove)
-
-    # # Update linear system.
-    # A, x, b = reduce_system(A, x, b, vars_to_remove)
-
-    # print(x.shape[0])
-
-
-    # # Recompute gaps
-    # gaps = np.zeros( (len(machina.tet_mesh.faces),3) )
-    # for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
-    #     if -1 in adj_ti:
-    #         continue
-    #     # Get local tet vertex indices of shared face vertices.
-    #     s, t = adj_ti[0], adj_ti[1]
-    #     vi = machina.tet_mesh.faces[fi][0]
-    #     vi_s = machina.tet_mesh.elements[s].index(vi)
-    #     vi_t = machina.tet_mesh.elements[t].index(vi)
-    #     f_s = x[var_index(s, vi_s, 0):var_index(s, vi_s, 3)]
-    #     f_t = x[var_index(t, vi_t, 0):var_index(t, vi_t, 3)]
-    #     gaps[fi,:] = f_t - np.dot(chiral_symmetries[machina.matchings[fi]], f_s)
-
-    # print(gaps)
-
-
-    
 
 
 
+    print('Adaptive rounding...')
+    int_vars = flag_integer_vars(machina, singular_vertices)
+    # Enforce integer variables
+    vars_fixed = dict()
+    # The reduction array is used to keep track of global vs. reduced indices
+    # as we progressively round the variables.
+    # row index: reduced index, col 0: global index, col 1: is_int boolean.
+    reduction_arr = np.zeros((12*ne, 2))
+    reduction_arr[:,0] = np.arange(12*ne)
+    for vi in int_vars:
+        reduction_arr[vi,1] = 1
+
+    # Loop until all integer variables are fixed.
+    while (len(vars_fixed) < len(int_vars)):
+        
+        # Identify integer variables not yet fixed.
+        vars_left = dict()
+        for ri in range(reduction_arr.shape[0]):
+            if reduction_arr[ri,1]:
+                vars_left[ri] = reduction_arr[ri,0]
+
+        print('Conjugate gradient... (%i integers left)' % len(vars_left))
+
+        # Identify fixeable variables
+        # First, variables with a small deviation should
+        # be rounded to their nearest integer.
+        vars_to_fix = []
+        # gvi: global variable index, rvi: reduced variable index.
+        for rvi, gvi in vars_left.items():
+            value = x[rvi]
+            rounded = int(round(value))
+            if np.abs(value - rounded) > 1e-4:
+                continue
+            # Otherwise, delta is small enough to round.
+            x[rvi] = rounded
+            vars_fixed[gvi] = rounded
+            vars_to_fix.append(rvi)
+
+        # If no variable is fixed, fix the one with the smallest
+        # deviation from its rounded integer.
+        if len(vars_to_fix) == 0:
+            rvi = np.argmin([ np.abs(x[rvi] - round(x[rvi])) for rvi in list(vars_left.keys()) ])
+            x[rvi] = rounded(x[rvi])
+            vars_fixed[vars_left[rvi]] = x[rvi]
+            vars_to_fix.append(rvi)
+
+        # Update linear system.
+        A, x, b = reduce_system(A, x, b, vars_to_fix)
+        b = b.toarray()
+        x = x.toarray()
+
+        # Run conjugate gradient on reduced system.
+        x, info = sparse.linalg.cg(A, b, x0=x, tol = 1e-2)
+
+        # Update the reduction array.
+        reduction_arr = np.delete(reduction_arr, vars_to_fix, axis=0)
+
+
+    uvw_map = np.zeros(12*ne)
+    count = 0
+    for i in range(12*ne):
+        if i in vars_fixed:
+            uvw_map[i] = vars_fixed[i]
+            count += 1
+        else:
+            uvw_map[i] = x[i - count]
+
+    return uvw_map
