@@ -23,9 +23,13 @@ def barycentric_interp(values, coords, desired_val):
     v = np.zeros((4,))
     v[0:3] = desired_val
     v[3] = 1
+    # Try to solve system, if singular, return None
+    try:
+        bary = np.linalg.solve(Q, v)
+    except np.linalg.linalg.LinAlgError:
+        return None
     # If any barycentric coordinate is negative, we are outside
     # the tetrahedral, return None.
-    bary = np.linalg.solve(Q, v)
     if (np.any([ e < 0 for e in bary])):
         return None
     # Convert barycentric coords to euclidean coords.

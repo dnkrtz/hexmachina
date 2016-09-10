@@ -18,6 +18,7 @@ from extraction import *
 from machina import HexMachina
 from optimization import *
 from parametrization import *
+from singularity import *
 from utils import *
 
 print("""\
@@ -38,7 +39,7 @@ say_ok()
 # Instantiate tetrahedral mesh
 print('Generating tetrahedral mesh...', end=" ")
 sys.stdout.flush()
-machina = HexMachina(tri_mesh, max_vol = 5)
+machina = HexMachina(tri_mesh, max_vol = 2)
 # Output tetrahedral mesh
 vtk_tetmesh(machina.tet_mesh, 'tet_mesh')
 say_ok()
@@ -68,9 +69,9 @@ sys.stdout.flush()
 machina.init_framefield()
 say_ok()
 
-# # Optimize 3D frame field by L-BFGS minimization.
-# print('Optimizing framefield...')
-# machina.optimize_framefield()
+# Optimize 3D frame field by L-BFGS minimization.
+print('Optimizing framefield...')
+machina.optimize_framefield()
 
 # Output frame field to .vtk file.
 vtk_framefield(machina.frames, 'field')
@@ -88,7 +89,7 @@ singular_vertices = singular_graph(machina)[2]
 say_ok()
 
 print("Parametrizing volume...")
-uvw_map = parametrize_volume(machina, singular_vertices, 2.0)
+uvw_map = parametrize_volume(machina, singular_vertices, 1.0)
 say_ok()
 
 print("Extracting hexahedrons...", end=" ")

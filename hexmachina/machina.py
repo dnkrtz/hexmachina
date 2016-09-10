@@ -157,4 +157,4 @@ class HexMachina(object):
         # Once optimization is complete, save results
         for fi, frame in enumerate(self.frames):
             # Make sure to store as ndarray, not matrix. Otherwise pyvtk goes bonkers.
-            frame.uvw = convert_to_R(frame, opti[3 * fi], opti[3 * fi + 1], opti[3 * fi + 2]).getA()
+            frame.uvw = convert_to_R(frame, opti[3*fi : 3*fi+3]).getA()

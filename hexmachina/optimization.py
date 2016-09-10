@@ -50,10 +50,10 @@ def pair_energy_diff(F_s, F_t, dF_s, dF_t):
 # Quantify smoothness around an internal tetrahedral edge.
 # Returns the result and its sparse gradient.
 def edge_energy(args):
-    ei, one_rings, frames, euler_angles = args
+    ei, one_rings, R, dR = args
 
     E = 0
-    dE = sparse.lil_matrix( (1, 3*len(frames)) )
+    dE = sparse.lil_matrix( (1, 3*len(R)) )
 
     if ei not in one_rings:
         return E, dE # Not internal.
@@ -64,15 +64,9 @@ def edge_energy(args):
         dF = []
         # Loop frame index (fi) combos.
         for fi in [combo[0], combo[1]]:
-            frame = frames[fi]
-            # The frame is represented by its euler angles.
-            R = convert_to_R(frame, euler_angles[3*fi], 
-                euler_angles[3*fi + 1], euler_angles[3*fi + 2])
-            F.append(R)
+            F.append(R[fi])
             # The partial derivative wrt each angle.
-            dR = convert_to_dR(frame, euler_angles[3*fi], 
-                    euler_angles[3*fi + 1], euler_angles[3*fi + 2])
-            dF.append(dR)
+            dF.append(dR[fi])
         
         # Add pair energy to the one-ring energy.
         E += pair_energy(F[0], F[1])
@@ -91,10 +85,14 @@ def global_energy(euler_angles, machina):
     one_rings = machina.one_rings
     frames = machina.frames
 
+    # Precompute R and dR for each frame.
+    R = [ convert_to_R(frames[fi], euler_angles[3*fi:3*fi+3]) for fi in range(len(frames)) ]
+    dR = [ convert_to_dR(frames[fi], euler_angles[3*fi:3*fi+3]) for fi in range(len(frames)) ]
+
     # Multiprocessing setup and execution.
     def parameters():
         for ei in range(len(machina.tet_mesh.edges)):
-            yield (ei, one_rings, frames, euler_angles)
+            yield (ei, one_rings, R, dR)
     pool = mp.Pool()
     results = pool.map(edge_energy, parameters())
     # Edge energies and their gradient.

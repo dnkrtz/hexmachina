@@ -29,7 +29,8 @@ def convert_to_euler(R):
     return np.array([alpha, beta, gamma])
 
 # Computes the rotation matrix for a given set of euler angles.
-def convert_to_R(frame, alpha, beta, gamma):
+def convert_to_R(frame, euler):
+    alpha, beta, gamma = euler[0], euler[1], euler[2]
     # Full rotation.
     c = [ np.cos(alpha), np.cos(beta), np.cos(gamma) ]
     s = [ np.sin(alpha), np.sin(beta), np.sin(gamma) ]
@@ -49,7 +50,8 @@ def convert_to_R(frame, alpha, beta, gamma):
     return R
 
 # Compute the partial derivatives of R wrt to euler angles.
-def convert_to_dR(frame, alpha, beta, gamma):
+def convert_to_dR(frame, euler):
+    alpha, beta, gamma = euler[0], euler[1], euler[2]
     c = [ np.cos(alpha), np.cos(beta), np.cos(gamma) ]
     s = [ np.sin(alpha), np.sin(beta), np.sin(gamma) ]
     # We will have one partial derivative per euler angle.
