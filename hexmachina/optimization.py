@@ -60,20 +60,17 @@ def edge_energy(args):
     
     # All combinations of s, t around the edges' one ring.
     for combo in itertools.combinations(one_rings[ei]['tets'], 2):
-        F = []
-        dF = []
-        # Loop frame index (fi) combos.
-        for fi in [combo[0], combo[1]]:
-            F.append(R[fi])
-            # The partial derivative wrt each angle.
-            dF.append(dR[fi])
+        # The frame matrices (euler XYZ)
+        Fs, Ft = R[combo[0]], R[combo[1]]
+        # The partial derivatives wrt each euler angle.
+        dFs, dFt = dR[combo[0]], dR[combo[1]]
         
         # Add pair energy to the one-ring energy.
-        E += pair_energy(F[0], F[1])
+        E += pair_energy(Fs, Ft)
         # Add pair energy gradients.
         for i in range(3):
-            dE[0, 3 * combo[0] + i] += pair_energy_diff(F[0], F[1], dF[0][i], np.zeros((3,3)))
-            dE[0, 3 * combo[1] + i] += pair_energy_diff(F[0], F[1], np.zeros((3,3)), dF[1][i])
+            dE[0, 3 * combo[0] + i] += pair_energy_diff(Fs, Ft, dFs[i], np.zeros((3,3)))
+            dE[0, 3 * combo[1] + i] += pair_energy_diff(Fs, Ft, np.zeros((3,3)), dFt[i])
 
     return E, dE.tocsr()
 
@@ -86,8 +83,8 @@ def global_energy(euler_angles, machina):
     frames = machina.frames
 
     # Precompute R and dR for each frame.
-    R = [ convert_to_R(frames[fi], euler_angles[3*fi:3*fi+3]) for fi in range(len(frames)) ]
-    dR = [ convert_to_dR(frames[fi], euler_angles[3*fi:3*fi+3]) for fi in range(len(frames)) ]
+    R = [ convert_to_R(frames[ti], euler_angles[3*ti:3*ti+3]) for ti in range(len(frames)) ]
+    dR = [ convert_to_dR(frames[ti], euler_angles[3*ti:3*ti+3]) for ti in range(len(frames)) ]
 
     # Multiprocessing setup and execution.
     def parameters():

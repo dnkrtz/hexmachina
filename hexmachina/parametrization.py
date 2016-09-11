@@ -22,7 +22,9 @@ from visual import *
 # four vertices and each vertex has 3 coordinates. The arguments are
 # tet index (ti), local vertex index (vi) and coordinate index (ci).
 def var_index(ti, vi, ci):
-    return ( 12 * ti + 3 * vi + ci )
+    if not isinstance(ci, range):
+        ci = [ ci ]
+    return [ ( 12 * ti + 3 * vi + i ) for i in ci ]
 
 def drop_rows(M, var_i):
     M = M.tolil()
@@ -58,7 +60,7 @@ def reduce_system(A, x, b, var_i):
 def linear_system(machina, mst_edges, singular_vertices):
     
     ne = len(machina.tet_mesh.elements)
-    C = sparse.lil_matrix( (3 * 12 * ne, 12*ne) )
+    C = sparse.lil_matrix( (9 * 12 * ne, 12*ne) )
     ccount = 0 # constraint counter
 
     for fi, adj_ti in enumerate(machina.tet_mesh.adjacent_elements):
@@ -70,10 +72,10 @@ def linear_system(machina, mst_edges, singular_vertices):
             for vi in machina.tet_mesh.faces[fi]:
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
             # Constrain surface normal.
-            w_pqr = [ var_index(t, vi_t[i], 2) for i in range(3) ]
-            for i in range(2):
-                C[ccount, w_pqr[0]] = 1
-                C[ccount, w_pqr[i]] = -1
+            pqr_w = [ var_index(t, vi_t[i], 2) for i in range(3) ]
+            for i in range(2): # points qr
+                C[ccount, pqr_w[0]] = 1
+                C[ccount, pqr_w[i]] = -1
                 ccount += 1
             
         # Internal face with two tets in common.
@@ -84,33 +86,54 @@ def linear_system(machina, mst_edges, singular_vertices):
             for vi in machina.tet_mesh.faces[fi]:
                 vi_s.append(machina.tet_mesh.elements[s].index(vi))
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
-
+            # The variable index range for the uvw values of each point.
+            pqr_t = [ var_index(t, vi_t[i], range(3)) for i in range(3) ]
+            pqr_s = [ var_index(t, vi_s[i], range(3)) for i in range(3) ]
             # Next, apply constraints.
             # If gap is 0 (minimum spanning tree).
             if fi in mst_edges:
                 for i in [0,1,2]: # points pqr
-                    for j in [0,1,2]: # coords uvw
-                        C[ccount, var_index(t, vi_t[i], j)] = - 1
-                        for k in [0,1,2]:
-                            C[ccount, var_index(s, vi_s[i], k)] = match[j, k]
-                        ccount += 1
-            # If gap isn't 0, enforce that it be constant.
+                    # Constraint.
+                    C[ccount:ccount+3, pqr_t[i]] = - sparse.eye(3)
+                    C[ccount:ccount+3, pqr_s[i]] = match
+                    ccount += 3
             else:
+                # If gap isn't 0, enforce that it be constant.
+                # In other words, constrain edges.
                 for i in [1,2]: # points qr
-                    for j in [0,1,2]: # coords uvw
-                        C[ccount, var_index(t, vi_t[0], j)] = 1
-                        C[ccount, var_index(t, vi_t[i], j)] = - 1
-                        for k in [0,1,2]: # permutation
-                            C[ccount, var_index(s, vi_s[0], k)] = - match[j, k]
-                            C[ccount, var_index(s, vi_s[i], k)] = match[j, k]
-                        ccount += 1
+                    # Constraint.
+                    C[ccount:ccount+3, pqr_t[0]] = sparse.eye(3)
+                    C[ccount:ccount+3, pqr_t[i]] = - sparse.eye(3)
+                    C[ccount:ccount+3, pqr_s[0]] = - match
+                    C[ccount:ccount+3, pqr_s[i]] = match
+                    ccount += 3
+
+    print(C.shape)
 
     C = C.tocsr()
     num_nonzeros = np.diff(C.indptr)
     C = C[num_nonzeros != 0] # remove zero-rows
 
-    # Create laplacian of tetrahedrons.
+    print(C.shape)
+
+    # Create laplacian of local tetrahedron connectivity.
     L = sparse.diags([1,1,1,-3,1,1,1],[-9,-6,-3,0,3,6,9],(12*ne,12*ne))
+
+    # # Compute vertex adjacency information
+    # vertex_adjacency = [ [] for _ in range(len(machina.tet_mesh.points)) ]
+    # for ei, edge in enumerate(machina.tet_mesh.edges):
+    #     vertex_adjacency[edge[0]].append(edge[1])
+    #     vertex_adjacency[edge[1]].append(edge[0])
+
+    # # Store vertex duplicate info
+    # vertex_equivalents = [ [] for _ in range(len(machina.tet_mesh.points)) ]
+    # for ti, tet in enumerate(machina.tet_mesh.elements):
+    #     for vi in [0,1,2,3]:
+    #         vertex_equivalents[tet[vi]].append(4*ti + vi)
+
+    # # Add 
+        
+    
 
     return L, C
 
