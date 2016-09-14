@@ -2,3 +2,4 @@
 *.pyc
 .vscode/
 io/test.vtk
+*/.ipynb_checkpoints

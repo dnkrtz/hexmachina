@@ -1,6 +1,7 @@
 PyVTK
 MeshPy-2016.1
 NumPy
+SciPy
 trimesh
 bidict
 tqdm

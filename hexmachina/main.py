@@ -69,9 +69,9 @@ sys.stdout.flush()
 machina.init_framefield()
 say_ok()
 
-# # Optimize 3D frame field by L-BFGS minimization.
-# print('Optimizing framefield...')
-# machina.optimize_framefield()
+# Optimize 3D frame field by L-BFGS minimization.
+print('Optimizing framefield...')
+machina.optimize_framefield()
 
 # Output frame field to .vtk file.
 vtk_framefield(machina.frames, 'field')
@@ -83,7 +83,7 @@ singular_vertices = singular_graph(machina)[2]
 say_ok()
 
 print("Parametrizing volume...")
-uvw_map = parametrize_volume(machina, singular_vertices, 1.0)
+uvw_map = parametrize_volume(machina, singular_vertices, 3.0)
 say_ok()
 
 print("Extracting hexahedrons...", end=" ")

@@ -84,16 +84,18 @@ def linear_system(machina, mst_edges, singular_vertices):
             # Get local tet vertex indices of shared face vertices.
             vi_s, vi_t = [], []
             for vi in machina.tet_mesh.faces[fi]:
+                # Store the ordered indices of each vertex on the face.
+                # In other words, vi_s[0] and vi_t[0] are the same vertex.
                 vi_s.append(machina.tet_mesh.elements[s].index(vi))
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
-            # The variable index range for the uvw values of each point.
+            # The point variable index range for the uvw values of each point.
             pqr_t = [ var_index(t, vi_t[i], range(3)) for i in range(3) ]
-            pqr_s = [ var_index(t, vi_s[i], range(3)) for i in range(3) ]
+            pqr_s = [ var_index(s, vi_s[i], range(3)) for i in range(3) ]
             # Next, apply constraints.
             # If gap is 0 (minimum spanning tree).
             if fi in mst_edges:
                 for i in [0,1,2]: # points pqr
-                    # Constraint.
+                    # Enforce 0 translation, but possible chiral rotation.
                     C[ccount:ccount+3, pqr_t[i]] = - sparse.eye(3)
                     C[ccount:ccount+3, pqr_s[i]] = match
                     ccount += 3
@@ -108,16 +110,15 @@ def linear_system(machina, mst_edges, singular_vertices):
                     C[ccount:ccount+3, pqr_s[i]] = match
                     ccount += 3
 
-    print(C.shape)
-
     C = C.tocsr()
     num_nonzeros = np.diff(C.indptr)
     C = C[num_nonzeros != 0] # remove zero-rows
 
-    print(C.shape)
-
     # Create laplacian of local tetrahedron connectivity.
     L = sparse.diags([1,1,1,-3,1,1,1],[-9,-6,-3,0,3,6,9],(12*ne,12*ne))
+
+    # # Laplacian matrix for gradient discretization.
+    # L = sparse.lil_matrix((12*ne, 12*ne))
 
     # # Compute vertex adjacency information
     # vertex_adjacency = [ [] for _ in range(len(machina.tet_mesh.points)) ]
@@ -125,15 +126,28 @@ def linear_system(machina, mst_edges, singular_vertices):
     #     vertex_adjacency[edge[0]].append(edge[1])
     #     vertex_adjacency[edge[1]].append(edge[0])
 
-    # # Store vertex duplicate info
+    # # Store vertex equivalency info
     # vertex_equivalents = [ [] for _ in range(len(machina.tet_mesh.points)) ]
     # for ti, tet in enumerate(machina.tet_mesh.elements):
     #     for vi in [0,1,2,3]:
-    #         vertex_equivalents[tet[vi]].append(4*ti + vi)
+    #         vertex_equivalents[tet[vi]].append(12*ti + 3*vi)
 
-    # # Add 
-        
-    
+    # # Create sparse laplacian.
+    # for vi, vertex_neighbors in enumerate(vertex_adjacency):
+    #     # All vertices equivalent to vi
+    #     vertex_indices = vertex_equivalents[vi]
+    #      # All vertices equivalent to the neighbors
+    #     neighbor_indices = [ vi for neigh_vi in vertex_neighbors for vi in vertex_equivalents[neigh_vi] ]
+    #     # Create proper laplacian tiles in the matrix, based on
+    #     # the adjacency information in the dup lists.
+    #     for vi in vertex_indices:
+    #         for neigh_vi in neighbor_indices:
+    #             L[vi:vi+3, neigh_vi:neigh_vi+3] = sparse.eye(3)
+
+    # # Add sum on diagonal
+    # L = L.tocsr()
+    # diag = L.sum(axis=1)
+    # L += - sparse.dia_matrix((diag, [0]))
 
     return L, C
 
@@ -276,7 +290,7 @@ def parametrize_volume(machina, singular_vertices, h):
     print("Conjugate Gradient... (Round 1)", end=" ")
     sys.stdout.flush()
 
-    x, info = sparse.linalg.cg(A, b, tol = 1e-2)
+    x, info = sparse.linalg.cg(A, b, tol = 1e-4)
 
     say_ok()
 
