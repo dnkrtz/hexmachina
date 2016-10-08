@@ -29,7 +29,7 @@ Given an input triangle mesh, a **tetrahedral mesh** is generated (using TetGen)
 TODO
 -----
 1. Back-propagation to compute gradients in L-BFGS, improve runtime.
-2. Field-based volume parametrization (mixed-integer linear CG) problem, currently broken.
+2. Field-based volume parametrization (mixed-integer linear CG problem) is currently broken.
 
 Dependencies
 -------------
