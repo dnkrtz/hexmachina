@@ -5,7 +5,7 @@ A short and sweet python implementation of the SRF approach to hexahedral meshin
 TODO
 -----
 - Back-propagation to compute gradients in L-BFGS, improve runtime.
-- Field-based volume parametrization (mixed-integer linear CG problem) is **currently broken**.
+- Field-based volume parametrization (mixed-integer linear CG problem) is **unfinished/broken**.
 - Maybe run additional smoothing on surface cross-field.
 
 
