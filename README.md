@@ -6,7 +6,7 @@ TODO
 -----
 - Back-propagation to compute gradients in L-BFGS, improve runtime.
 - Field-based volume parametrization (mixed-integer linear CG problem) is **currently broken**.
-- Maybe run additional smoothing on surface cross-field as well.
+- Maybe run additional smoothing on surface cross-field.
 
 
 Algorithm
