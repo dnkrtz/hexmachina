@@ -7,7 +7,7 @@ Python implementation of the SRF approach to hexahedral meshing. (**Work in Prog
 
 TODO
 -----
-- Field-based volume parametrization (linear mixed-integer CG problem) is **not working**.
+- Vertex-based volume parametrization (linear mixed-integer CG problem) map is **not working**.
 - Edge collapse adjustments need to be implemented.
 - Back-propagation to compute gradients in L-BFGS, hopefully improve runtime.
 - Maybe run additional smoothing on surface cross-field.
