@@ -2,12 +2,14 @@
 ==============
 Python implementation of the SRF approach to hexahedral meshing. (**Work in Progress**)
 
+![Couldn't load picture.](https://github.com/dnkrtz/HexMachina/blob/master/img/flow.png "Meshing Progression")
+
 TODO
 -----
 - Field-based volume parametrization (mixed-integer linear CG problem) is **not working**.
-- Back-propagation to compute gradients in L-BFGS, improve runtime.
+- Edge collapse adjustments need to be implemented.
+- Back-propagation to compute gradients in L-BFGS, hopefully improve runtime.
 - Maybe run additional smoothing on surface cross-field.
-
 
 Algorithm
 -----------
