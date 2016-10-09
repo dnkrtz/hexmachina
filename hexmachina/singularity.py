@@ -14,11 +14,11 @@ import numpy as np
 from transforms import *
 from utils import *
 
-# Compute the matchings for all pairs of face-adjacent tets.
-# We use matchings to characterize closeness between two frames s and t.
-# It is essentially the chiral permutation that most closely defines
-# the rotation between them.
+
 def compute_matchings(machina):
+    """Compute the matchings for all pairs of face-adjacent tets.
+    We use matchings to characterize closeness between two frames s and t.
+    This matching is the chiral permutation most closely defines the rotation."""
     # Loop through all pairs of face-adjacent tets.
     for fi, pair in enumerate(machina.tet_mesh.adjacent_elements):
         args = []
@@ -32,9 +32,9 @@ def compute_matchings(machina):
         machina.matchings[fi] = np.argmin(args)
 
 def compute_edge_types(machina, edge_index):
-    # Classify the internal edges by type, and find the singular graph.
-    # The edge type is determined via concatenation of the matchings around 
-    # the edge's tetrahedral one-ring.
+    """Classify the internal edges by type, and find the singular graph.
+    The edge type is determined by concatenating the matchings around the edges one-ring."""
+    # For each internal edge of the tetrahedral mesh.
     for ei in edge_index:
         try:
             one_ring = machina.one_rings[ei]
@@ -68,10 +68,9 @@ def compute_edge_types(machina, edge_index):
         if is_singular: machina.edge_types[ei] = 1
         if is_improper: machina.edge_types[ei] = 2
         
-# Computes singular graph, that is, all non-identity (singular)
-# edges. Returns the singular edges, improper edges and singular
-# vertices.
 def singular_graph(machina):
+    """Computes singular graph, that is, all non-identity (singular) edges.
+    Returns the singular edges, improper edges and singular vertices."""
     # Compute matchings.
     compute_matchings(machina)
     compute_edge_types(machina, range(len(machina.tet_mesh.edges)))

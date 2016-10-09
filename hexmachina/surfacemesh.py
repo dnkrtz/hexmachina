@@ -1,5 +1,5 @@
 '''
-    File: curvature.py
+    File: surfacemesh.py
     License: MIT
     Author: Aidan Kurtz
     Created: 09/07/2016
@@ -11,7 +11,6 @@
 '''
 
 from utils import normalize
-
 from bidict import bidict
 import math
 import meshpy.tet
@@ -19,8 +18,8 @@ import numpy as np
 
 class SurfaceMesh(object):
 
-    # Extract surface triangle mesh from volumetric tetrahedral mesh.
     def __init__(self, tet_mesh):
+        """Extract surface triangle mesh from volumetric tetrahedral mesh."""
         # Vertices as array of coordinates.
         # Faces as triplets of vertex indices.
         self.vertices = []
@@ -57,9 +56,8 @@ class SurfaceMesh(object):
         self.pdir1 = np.zeros( (len(self.vertices),3) )
         self.pdir2 = np.zeros( (len(self.vertices),3) )
 
-
-    # Compute vertex and face normals of the triangular mesh.
     def compute_normals(self):
+        """Compute vertex and face normals of the triangular mesh."""
 
         # Compute face normals, easy as cake.
         for fi, face in enumerate(self.faces):
@@ -84,9 +82,9 @@ class SurfaceMesh(object):
     http://gfx.cs.princeton.edu/pubs/_2004_ECA/curvpaper.pdf 
     """
 
-    # Rotate a coordinate system to be perpendicular to the given normal.
     @staticmethod
     def rotate_coord_sys(old_u, old_v, new_norm):
+        """Rotate a coordinate system to be perpendicular to the given normal."""
         new_u = old_u
         new_v = old_v
         old_norm = np.cross(old_u, old_v)
@@ -104,9 +102,9 @@ class SurfaceMesh(object):
         new_v -= dperp * np.dot(new_v, perp_old)
         return new_u, new_v
 
-    # Reproject curvature tensor from the basis spanned by old uv to the new uv basis.
     @classmethod
     def project_curvature(cls, old_u, old_v, old_ku, old_kuv, old_kv, new_u, new_v):
+        """Reproject curvature tensor from the basis spanned by old uv to the new uv basis."""
         old_normal = np.cross(old_u, old_v)
         # Rotate new coord system to be normal to old, for reprojection
         r_new_u, r_new_v = cls.rotate_coord_sys(new_u, new_v, old_normal)
@@ -120,9 +118,9 @@ class SurfaceMesh(object):
 
         return new_ku, new_kuv, new_kv
 
-    # Given a curvature tensor, diagonalize to find principal directions and curvatures.
     @classmethod
     def diagonalize_curvature(cls, old_u, old_v, ku, kuv, kv, new_norm):
+        """Given a curvature tensor, diagonalize to find principal directions and curvatures."""
         # Rotate old coord system to be normal to new.
         r_old_u, r_old_v = cls.rotate_coord_sys(old_u, old_v, new_norm)
         c = 1
@@ -151,10 +149,10 @@ class SurfaceMesh(object):
         # Return all the things.
         return pdir1, pdir2, k1, k2
 
-    # Compute the area "belonging" to each vertex or each corner
-    # of a triangle (defined as Voronoi area restricted to the 1-ring of
-    # a vertex, or to the triangle).
     def compute_pointareas(self):
+        """Compute the area "belonging" to each vertex or each corner
+        of a triangle (defined as Voronoi area restricted to the 1-ring of
+        a vertex, or to the triangle)."""
 
         cornerareas = np.zeros( (len(self.faces), 3) )
         pointareas = np.zeros( (len(self.vertices), 1) )
@@ -196,9 +194,9 @@ class SurfaceMesh(object):
 
         return pointareas, cornerareas
 
-    # Given the faces, vertices and vertex normals.
-    # Compute principal curvatures and directions.
     def compute_curvatures(self):
+        """Given the faces, vertices and vertex normals.
+        Compute principal curvatures and directions."""
         
         # Since we diagonalize the matrix later, this isn't an object variable.
         curv12 = np.zeros( (len(self.vertices),1) )

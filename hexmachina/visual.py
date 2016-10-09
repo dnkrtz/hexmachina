@@ -5,7 +5,7 @@
     Created: 09/07/2016
     Python Version: 3.5
     ========================
-    This module contains some matplotlib plotting functions.
+    Deprecated, data too large to be visualized in mplotlib.
 '''
 
 import numpy as np

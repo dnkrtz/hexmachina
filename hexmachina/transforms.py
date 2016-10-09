@@ -10,9 +10,9 @@
 
 import numpy as np
 
-# Compute the euler angles of this rotation. Implementation of:
-# http://www.staff.city.ac.uk/~sbbh653/publications/euler.pdf
 def convert_to_euler(R):
+    """Compute the euler angles of this rotation.
+    Refer to [http://www.staff.city.ac.uk/~sbbh653/publications/euler.pdf]"""
     alpha, beta, gamma = 0, 0, 0
     if not np.isclose(np.abs(R[2,0]), 1):
         beta = - np.arcsin(R[2,0])
@@ -28,8 +28,8 @@ def convert_to_euler(R):
             alpha = - gamma + np.arctan2(-R[0,1], -R[0,2])
     return np.array([alpha, beta, gamma])
 
-# Computes the rotation matrix for a given set of euler angles.
 def convert_to_R(frame, euler):
+    """Computes the rotation matrix for a given set of euler angles."""
     alpha, beta, gamma = euler[0], euler[1], euler[2]
     # Full rotation.
     c = [ np.cos(alpha), np.cos(beta), np.cos(gamma) ]
@@ -49,8 +49,8 @@ def convert_to_R(frame, euler):
         ])
     return R
 
-# Compute the partial derivatives of R wrt to euler angles.
 def convert_to_dR(frame, euler):
+    """Compute the partial derivatives of R wrt to euler angles."""
     alpha, beta, gamma = euler[0], euler[1], euler[2]
     c = [ np.cos(alpha), np.cos(beta), np.cos(gamma) ]
     s = [ np.sin(alpha), np.sin(beta), np.sin(gamma) ]
@@ -107,5 +107,5 @@ chiral_symmetries = [
     np.matrix([[-1,  0,  0], [ 0,  0, -1], [ 0, -1,  0]]),
     np.matrix([[-1,  0,  0], [ 0,  0,  1], [ 0,  1,  0]]),
     np.matrix([[ 0,  0,  1], [ 0, -1,  0], [ 1,  0,  0]]),
-    np.matrix([[ 0,  0, -1], [ 0, -1,  0], [-1,  0,  0]]), #double check this
+    np.matrix([[ 0,  0, -1], [ 0, -1,  0], [-1,  0,  0]]), # TODO(aidan) double check this
 ]

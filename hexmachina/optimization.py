@@ -18,8 +18,8 @@ import random
 
 from transforms import *
 
-# Quantify adjacent frame smoothness.
 def pair_energy(F_s, F_t):
+    """Quantify adjacent frame smoothness"""
     # Approximate permutation for the transformation from s-t.
     P = F_t.T * F_s
     # Since our initialized framefield is orthogonal, we can easily quantify
@@ -31,8 +31,8 @@ def pair_energy(F_s, F_t):
         E_st += P[0,i]**2 * P[1,i]**2 + P[1,i]**2 * P[2,i]**2 + P[2,i]**2 * P[0,i]**2
     return E_st
 
-# Quantify adjacent frame smoothness derivative (for energy gradient).
 def pair_energy_diff(F_s, F_t, dF_s, dF_t):
+    """Quantify adjacent frame smoothness derivative (for energy gradient)."""
     # Approximate permutation and its derivative (chain rule).
     P = F_t.T * F_s
     dP = dF_t.T * F_s + F_t.T * dF_s
@@ -47,9 +47,12 @@ def pair_energy_diff(F_s, F_t, dF_s, dF_t):
                     (2 * dP[2,i] * P[2,i] * P[0,i]**2) + (2 * P[2,i]**2 * dP[0,i] * P[0,i])
     return dE_st
 
-# Quantify smoothness around an internal tetrahedral edge.
-# Returns the result and its sparse gradient.
+
 def edge_energy(args):
+    """"Quantify smoothness around an internal tetrahedral edge.
+    Returns the result and its sparse gradient.
+    """"
+    # Parse input args
     ei, one_rings, R, dR = args
 
     E = 0
@@ -74,10 +77,10 @@ def edge_energy(args):
 
     return E, dE.tocsr()
 
-# Returns the energy function and its gradient.
-# Minimizing via L-BFGS smoothens the framefield.
 def global_energy(euler_angles, machina):
-
+    """"Global smoothness energy function being minimized.
+    Returns the energy function and its gradient.
+    """"
     # Relevant data
     one_rings = machina.one_rings
     frames = machina.frames

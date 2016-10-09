@@ -1,5 +1,5 @@
 '''
-    File: tetmesh.py
+    File: machina.py
     License: MIT
     Author: Aidan Kurtz
     Created: 09/07/2016
@@ -22,6 +22,10 @@ from surfacemesh import *
 from utils import *
 
 class Frame(object):
+    """
+    Frame object defining a uvw tensor, a location and 
+    whether or not it lies at the boudary of the field.
+    """
     def __init__(self, uvw, location, is_boundary = False):
         self.uvw = uvw
         self.location = location
@@ -29,6 +33,7 @@ class Frame(object):
 
 class HexMachina(object):
     def __init__(self, tri_mesh, max_vol):
+        """Generate tetrahedral mesh and extract surface boundary."""
         mesh_info = meshpy.tet.MeshInfo()
         # Define MeshPy options.
         # @TODO Investigate why the -Y switch messes up surface extraction (facets?)
@@ -48,6 +53,7 @@ class HexMachina(object):
         self.edge_types = np.zeros(len(mesh_info.edges))
 
     def compute_dual(self):
+        """Compute dual graph topology information."""
         # Dual edges as a dictionary where they key is a set of tets,
         # and the value is the index of the face they share.
         self.dual_edges = {}
@@ -96,8 +102,8 @@ class HexMachina(object):
             # Store it in our ring dictionary (don't tell golem).
             self.one_rings[ei] =  { 'tets' : one_ring, 'faces' : face_sequence }
 
-    # Initialize the frame field based on surface curvature and normals.
     def init_framefield(self):
+        """Initialize the frame field based on surface curvature and normals."""
         boundary_frames = []
         boundary_ids = {}
         # The frame field is initialized at the boundary,
@@ -129,8 +135,8 @@ class HexMachina(object):
                 nearest_ti = tree.query(location)[1] # Find closest boundary frame
                 self.frames.append(Frame(boundary_frames[nearest_ti].uvw, location, False))
 
-    # Optimize the framefield.
     def optimize_framefield(self):
+        """Optimize frame field smoothness using L-BFGS"""
         # Define all frames in terms of euler angles.
         euler_angles = np.zeros( (len(self.tet_mesh.elements), 3) )
         # Loop over the tets.
@@ -152,7 +158,7 @@ class HexMachina(object):
         # Use scipy's L-BFGS to minimize the energy function.
         opti = optimize.minimize(global_energy, euler_angles, args=(self,),
                                  method='L-BFGS-B', jac = True,
-                                 options={'ftol': 1e-2, 'maxiter': 50, 'disp': True}).x
+                                 options={'ftol': 1e-4, 'maxiter': 50, 'disp': True}).x
 
         # Once optimization is complete, save results
         for fi, frame in enumerate(self.frames):

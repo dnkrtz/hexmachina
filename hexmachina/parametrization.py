@@ -18,24 +18,28 @@ from transforms import *
 from utils import *
 from visual import *
 
-# Since the variable are flattened as vectors, where each tet has
-# four vertices and each vertex has 3 coordinates. The arguments are
-# tet index (ti), local vertex index (vi) and coordinate index (ci).
+# 
 def var_index(ti, vi, ci):
+    """The flattened index corresponding to the tet index ti,
+    local vertex index vi, and coordinate index ci.
+    """
     if not isinstance(ci, range):
         ci = [ ci ]
     return [ ( 12 * ti + 3 * vi + i ) for i in ci ]
 
-def drop_rows(M, var_i):
+def drop_rows(M, i):
+    """Remove row(s) i from matrix"""
     M = M.tolil()
-    M.rows = np.delete(M.rows, var_i)
-    M.data = np.delete(M.data, var_i)
-    M._shape = (M._shape[0] - len(var_i), M._shape[1])
+    M.rows = np.delete(M.rows, i)
+    M.data = np.delete(M.data, i)
+    M._shape = (M._shape[0] - len(i), M._shape[1])
     return M
 
 # Remove variables from system.
 # The 'b' matrix should have its i value(s) set before calling.
-def reduce_system(A, x, b, var_i):
+def reduce_system(A, x, b, i):
+    """Remove variable(s) i from system.
+    Row(s) i of matrix 'b' must be set before this gets called."""
 
     # Convert all the lil format.
     A = sparse.lil_matrix(A)
@@ -47,17 +51,20 @@ def reduce_system(A, x, b, var_i):
         b = b - x[i,0] * A.getcol(i)
 
     # Drop rows form b vector.
-    b = drop_rows(b, var_i) 
+    b = drop_rows(b, i) 
     # Drop rows from the x vector.
-    x = drop_rows(x, var_i)
+    x = drop_rows(x, i)
     # Drop rows from the A matrix.
-    A = drop_rows(A, var_i)
+    A = drop_rows(A, i)
     # Drop cols from the A matrix.
-    A = drop_rows(A.transpose(), var_i)
+    A = drop_rows(A.transpose(), i)
 
     return A, x, b
 
 def linear_system(machina, mst_edges, singular_vertices):
+    """Define linear system that represents the parametrization.
+    This involes an atlas of maps defining a uvw iso-value at each vertex.
+    A single vertex can have multiple uvw values. (from my understanding)"""
     
     ne = len(machina.tet_mesh.elements)
     C = sparse.lil_matrix( (9 * 12 * ne, 12*ne) )
@@ -110,48 +117,19 @@ def linear_system(machina, mst_edges, singular_vertices):
                     C[ccount:ccount+3, pqr_s[i]] = match
                     ccount += 3
 
+    # Remove zero-rows from constraint matrix.
     C = C.tocsr()
     num_nonzeros = np.diff(C.indptr)
-    C = C[num_nonzeros != 0] # remove zero-rows
+    C = C[num_nonzeros != 0]
 
     # Create laplacian of local tetrahedron connectivity.
     L = sparse.diags([1,1,1,-3,1,1,1],[-9,-6,-3,0,3,6,9],(12*ne,12*ne))
 
-    # # Laplacian matrix for gradient discretization.
-    # L = sparse.lil_matrix((12*ne, 12*ne))
-
-    # # Compute vertex adjacency information
-    # vertex_adjacency = [ [] for _ in range(len(machina.tet_mesh.points)) ]
-    # for ei, edge in enumerate(machina.tet_mesh.edges):
-    #     vertex_adjacency[edge[0]].append(edge[1])
-    #     vertex_adjacency[edge[1]].append(edge[0])
-
-    # # Store vertex equivalency info
-    # vertex_equivalents = [ [] for _ in range(len(machina.tet_mesh.points)) ]
-    # for ti, tet in enumerate(machina.tet_mesh.elements):
-    #     for vi in [0,1,2,3]:
-    #         vertex_equivalents[tet[vi]].append(12*ti + 3*vi)
-
-    # # Create sparse laplacian.
-    # for vi, vertex_neighbors in enumerate(vertex_adjacency):
-    #     # All vertices equivalent to vi
-    #     vertex_indices = vertex_equivalents[vi]
-    #      # All vertices equivalent to the neighbors
-    #     neighbor_indices = [ vi for neigh_vi in vertex_neighbors for vi in vertex_equivalents[neigh_vi] ]
-    #     # Create proper laplacian tiles in the matrix, based on
-    #     # the adjacency information in the dup lists.
-    #     for vi in vertex_indices:
-    #         for neigh_vi in neighbor_indices:
-    #             L[vi:vi+3, neigh_vi:neigh_vi+3] = sparse.eye(3)
-
-    # # Add sum on diagonal
-    # L = L.tocsr()
-    # diag = L.sum(axis=1)
-    # L += - sparse.dia_matrix((diag, [0]))
-
     return L, C
 
 def flag_integer_vars(machina, singular_vertices):
+    """Compute which variables are integer-constrained.
+    Return the indices of these variables."""
 
     int_vars = set()
 
@@ -177,6 +155,8 @@ def flag_integer_vars(machina, singular_vertices):
     return int_vars
 
 def adaptive_rounding(machina, A, x, b, singular_vertices):
+    """Adaptively round the solution vector in a greedy manner."""
+
     int_vars = flag_integer_vars(machina, singular_vertices)
     # Enforce integer variables
     vars_fixed = dict()
@@ -235,6 +215,7 @@ def adaptive_rounding(machina, A, x, b, singular_vertices):
         # Update the reduction array.
         reduction_arr = np.delete(reduction_arr, vars_to_fix, axis=0)
 
+    # Final map.
     uvw_map = np.zeros(12*ne)
     count = 0
     for i in range(12*ne):
@@ -247,6 +228,8 @@ def adaptive_rounding(machina, A, x, b, singular_vertices):
     return uvw_map
 
 def parametrize_volume(machina, singular_vertices, h):
+    """Parametrize the volume as an atlas of maps based on the 3d frame field.
+    Returns the discretized uvw map atlas (vertex-based)."""
 
     # Each vertex has multiple values, depending
     # on the number of tets it's a part of.
