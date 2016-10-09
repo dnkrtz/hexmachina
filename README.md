@@ -1,6 +1,6 @@
  Hex Machina
 ==============
-A short and sweet python implementation of the SRF approach to hexahedral meshing. (**WIP**)
+Python implementation of the SRF approach to hexahedral meshing. (**Work in Progress**)
 
 TODO
 -----
