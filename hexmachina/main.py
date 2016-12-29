@@ -35,7 +35,7 @@ def main():
 
     print('Reading triangle mesh...', end=" ")
     sys.stdout.flush()
-    tri_mesh = trimesh.load_mesh('../io/cylinder.stl')
+    tri_mesh = trimesh.load_mesh('../data/cylinder.stl')
     say_ok()
 
     # Instantiate tetrahedral mesh

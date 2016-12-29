@@ -5,7 +5,8 @@
     Created: 25/08/2016
     Python Version: 3.5
     ========================
-    Volume parametrization based on the discrete 3D frame field.
+    Hexahedral parametrization based on the discrete 3D frame field.
+    (This module is currently broken)
 '''
 
 import bisect
@@ -64,7 +65,7 @@ def reduce_system(A, x, b, i):
 def linear_system(machina, mst_edges, singular_vertices):
     """Define linear system that represents the parametrization.
     This involes an atlas of maps defining a uvw iso-value at each vertex.
-    A single vertex can have multiple uvw values. (from my understanding)"""
+    A single vertex can have multiple uvw values."""
     
     ne = len(machina.tet_mesh.elements)
     C = sparse.lil_matrix( (9 * 12 * ne, 12*ne) )

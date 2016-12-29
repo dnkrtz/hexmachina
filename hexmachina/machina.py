@@ -158,7 +158,7 @@ class HexMachina(object):
         # Use scipy's L-BFGS to minimize the energy function.
         opti = optimize.minimize(global_energy, euler_angles, args=(self,),
                                  method='L-BFGS-B', jac = True,
-                                 options={'ftol': 1e-4, 'maxiter': 50, 'disp': True}).x
+                                 options={'ftol': 1e-4, 'maxiter': 80, 'disp': True}).x
 
         # Once optimization is complete, save results
         for fi, frame in enumerate(self.frames):

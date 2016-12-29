@@ -49,9 +49,8 @@ def pair_energy_diff(F_s, F_t, dF_s, dF_t):
 
 
 def edge_energy(args):
-    """"Quantify smoothness around an internal tetrahedral edge.
-    Returns the result and its sparse gradient.
-    """"
+    """Quantify smoothness around an internal tetrahedral edge.
+    Returns the result and its sparse gradient."""
     # Parse input args
     ei, one_rings, R, dR = args
 
@@ -78,9 +77,9 @@ def edge_energy(args):
     return E, dE.tocsr()
 
 def global_energy(euler_angles, machina):
-    """"Global smoothness energy function being minimized.
+    """Global smoothness energy function being minimized.
     Returns the energy function and its gradient.
-    """"
+    """
     # Relevant data
     one_rings = machina.one_rings
     frames = machina.frames
