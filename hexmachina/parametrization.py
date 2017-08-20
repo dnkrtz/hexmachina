@@ -81,7 +81,7 @@ def linear_system(machina, mst_edges, singular_vertices):
                 vi_t.append(machina.tet_mesh.elements[t].index(vi))
             # Constrain surface normal.
             pqr_w = [ var_index(t, vi_t[i], 2) for i in range(3) ]
-            for i in range(2): # points qr
+            for i in [1,2]: # points qr
                 C[ccount, pqr_w[0]] = 1
                 C[ccount, pqr_w[i]] = -1
                 ccount += 1

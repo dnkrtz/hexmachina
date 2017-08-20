@@ -41,7 +41,7 @@ def main():
     # Instantiate tetrahedral mesh
     print('Generating tetrahedral mesh...', end=" ")
     sys.stdout.flush()
-    machina = HexMachina(tri_mesh, max_vol = 1)
+    machina = HexMachina(tri_mesh, max_vol = 5)
     # Output tetrahedral mesh
     vtk_tetmesh(machina.tet_mesh, 'tet_mesh')
     say_ok()

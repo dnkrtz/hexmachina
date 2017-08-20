@@ -53,7 +53,7 @@ def is_on_edge(shape, edge):
 
 def vtk_tetmesh(mesh, filename):
     """Save tetrahedral mesh as a .vtk file for paraview."""
-    mesh.write_vtk("../io/vtk/%s.vtk" % filename)
+    mesh.write_vtk("../data/vtk/%s.vtk" % filename)
 
 
 def vtk_framefield(frames, filename):
@@ -75,7 +75,7 @@ def vtk_framefield(frames, filename):
 
     structure = PolyData(points=points, lines=lines)
     vtk = VtkData(structure, 'Volumetric frame-field')
-    vtk.tofile('../io/vtk/%s' % filename)
+    vtk.tofile('../data/vtk/%s' % filename)
 
 
 def vtk_curvature(surf_mesh, filename):
@@ -93,7 +93,7 @@ def vtk_curvature(surf_mesh, filename):
 
     structure = PolyData(points=points, lines=lines)
     vtk = VtkData(structure, 'Curvature cross-field')
-    vtk.tofile('../io/vtk/%s' % filename)
+    vtk.tofile('../data/vtk/%s' % filename)
 
 
 def vtk_lines(points, lines, filename):
@@ -101,7 +101,7 @@ def vtk_lines(points, lines, filename):
     vtk = VtkData(\
           UnstructuredGrid(points, line=lines),
           'Singular graph')
-    vtk.tofile('../io/vtk/%s' % filename)
+    vtk.tofile('../data/vtk/%s' % filename)
 
 
 def vtk_points(points, filename):
@@ -109,4 +109,4 @@ def vtk_points(points, filename):
     vtk = VtkData(\
           PolyData(points, vertices = [ range(len(points)) ]),
           'Points')
-    vtk.tofile('../io/vtk/%s' % filename)
+    vtk.tofile('../data/vtk/%s' % filename)
